@@ -1,0 +1,48 @@
+# Penlet Backend Requirements
+# For Python 3.14, use newer package versions with pre-built wheels
+
+# FastAPI Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.9
+
+# Database
+sqlalchemy[asyncio]>=2.0.36
+asyncpg>=0.30.0
+alembic>=1.14.0
+
+# Authentication & Security
+python-jose[cryptography]>=3.3.0
+passlib[argon2]>=1.7.4
+argon2-cffi>=23.1.0
+
+# Validation
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+email-validator>=2.2.0
+
+# HTTP Client
+httpx>=0.28.0
+
+# File handling
+python-magic-bin>=0.4.14; sys_platform == 'win32'
+python-magic>=0.4.27; sys_platform != 'win32'
+aiofiles>=24.1.0
+Pillow>=11.0.0
+
+# Utilities
+python-dateutil>=2.9.0
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-cov>=6.0.0
+
+# Development
+black>=24.10.0
+isort>=5.13.2
+flake8>=7.1.0
+mypy>=1.13.0
+
+# Production (Linux only)
+gunicorn>=23.0.0; sys_platform != 'win32'
