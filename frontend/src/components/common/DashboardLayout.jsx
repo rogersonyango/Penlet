@@ -7,6 +7,8 @@ import {
   Users, BarChart3, Settings, CheckCircle, Upload, GraduationCap, Loader2
 } from 'lucide-react';
 import { useAuthStore } from '../../context/authStore';
+import NotificationBell from '../../components/NotificationBell';
+import AlarmPopup from '../../components/AlarmPopup';
 import toast from 'react-hot-toast';
 
 const NAVIGATION = {
@@ -51,19 +53,26 @@ export default function DashboardLayout({ role }) {
   
   const navigation = NAVIGATION[role] || NAVIGATION.student;
   
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      // Delay the request to not be intrusive
+      setTimeout(() => {
+        Notification.requestPermission();
+      }, 5000);
+    }
+  }, []);
+  
   // Ensure user data is loaded before rendering dashboard content
   useEffect(() => {
     const initializeDashboard = async () => {
-      // If user is not loaded yet, try to refresh from server
       if (!user && !isLoading) {
         const result = await refreshUser();
         if (!result.success) {
-          // If refresh fails, redirect to login
           navigate('/login');
           return;
         }
       }
-      // Small delay to ensure state is fully propagated
       setTimeout(() => setIsReady(true), 100);
     };
     
@@ -78,204 +87,185 @@ export default function DashboardLayout({ role }) {
   
   const getRoleBadgeColor = () => {
     switch (role) {
-      case 'admin': return 'bg-red-500/20 text-red-300';
-      case 'teacher': return 'bg-accent-500/20 text-accent-300';
-      default: return 'bg-primary-500/20 text-primary-300';
+      case 'admin': return 'bg-red-100 text-red-700';
+      case 'teacher': return 'bg-accent-100 text-accent-700';
+      default: return 'bg-primary-100 text-primary-700';
     }
   };
+
+  const getClassBadge = () => {
+    if (role === 'student' && user?.student_class) {
+      const classMap = {
+        SENIOR_1: 'S1', SENIOR_2: 'S2', SENIOR_3: 'S3',
+        SENIOR_4: 'S4', SENIOR_5: 'S5', SENIOR_6: 'S6',
+      };
+      return classMap[user.student_class] || user.student_class;
+    }
+    return null;
+  };
   
-  // Show loading state while initializing
-  if (!isReady || !user) {
+  // Show loading state while checking auth
+  if (isLoading || !isReady) {
     return (
       <div className="min-h-screen bg-dark-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-4" />
-          <p className="text-dark-400">Loading your dashboard...</p>
+          <p className="text-dark-400">Loading...</p>
         </div>
       </div>
     );
   }
-  
+
   return (
-    <div className="min-h-screen bg-dark-900 flex">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-dark-800/50 border-r border-dark-700/50">
-        {/* Logo */}
-        <div className="flex items-center gap-3 h-16 px-6 border-b border-dark-700/50">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">P</span>
+    <div className="min-h-screen bg-dark-900">
+      {/* Alarm Popup - renders when alarms trigger */}
+      {role === 'student' && <AlarmPopup />}
+      
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-dark-800 border-r border-dark-700 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center justify-between p-4 border-b border-dark-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                <span className="text-white font-bold text-lg">P</span>
+              </div>
+              <span className="text-xl font-bold text-white">Penlet</span>
+            </div>
+            <button 
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 text-dark-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <span className="text-xl font-bold text-white">Penlet</span>
-        </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          <div className="space-y-1">
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {navigation.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 end={item.path === `/${role}`}
-                className={({ isActive }) =>
-                  `sidebar-item ${isActive ? 'active' : ''}`
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => 
+                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-primary-500/10 text-primary-400 border-l-4 border-primary-500' 
+                      : 'text-dark-400 hover:bg-dark-700/50 hover:text-white'
+                  }`
                 }
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.name}</span>
               </NavLink>
             ))}
-          </div>
-        </nav>
-        
-        {/* User info */}
-        <div className="p-4 border-t border-dark-700/50">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-semibold">
-              {user?.first_name?.[0]}{user?.last_name?.[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user?.first_name} {user?.last_name}
-              </p>
-              <p className="text-xs text-dark-400 truncate">{user?.email}</p>
+          </nav>
+
+          {/* User Info */}
+          <div className="p-4 border-t border-dark-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-semibold">
+                {user?.first_name?.[0]}{user?.last_name?.[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {user?.first_name} {user?.last_name}
+                </p>
+                <p className="text-xs text-dark-400 truncate">{user?.email}</p>
+              </div>
             </div>
           </div>
         </div>
       </aside>
-      
-      {/* Mobile sidebar */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25 }}
-              className="fixed inset-y-0 left-0 w-72 bg-dark-800 border-r border-dark-700 z-50 lg:hidden"
-            >
-              <div className="flex items-center justify-between h-16 px-6 border-b border-dark-700">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                    <span className="text-white font-bold">P</span>
-                  </div>
-                  <span className="text-lg font-bold text-white">Penlet</span>
-                </div>
-                <button onClick={() => setSidebarOpen(false)} className="text-dark-400 hover:text-white">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <nav className="py-4 px-3">
-                {navigation.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.path === `/${role}`}
-                    onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) =>
-                      `sidebar-item ${isActive ? 'active' : ''}`
-                    }
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span>{item.name}</span>
-                  </NavLink>
-                ))}
-              </nav>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-      
-      {/* Main content */}
-      <div className="flex-1 lg:pl-64">
-        {/* Header */}
-        <header className="sticky top-0 z-30 bg-dark-900/80 backdrop-blur-lg border-b border-dark-700/50">
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-dark-400 hover:text-white"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            
-            <div className="flex items-center gap-2 lg:gap-4">
-              <span className={`badge ${getRoleBadgeColor()} capitalize`}>
-                <GraduationCap className="w-3 h-3 mr-1" />
-                {role}
-              </span>
-              {user?.student_class && (
-                <span className="badge badge-primary">{user.student_class}</span>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Notifications */}
-              <button className="relative p-2 text-dark-400 hover:text-white transition-colors">
-                <Bell className="w-5 h-5" />
-                <span className="notification-dot" />
+
+      {/* Main Content */}
+      <div className="lg:pl-64">
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 bg-dark-800/80 backdrop-blur-xl border-b border-dark-700">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 text-dark-400 hover:text-white"
+              >
+                <Menu className="w-6 h-6" />
               </button>
               
-              {/* Profile dropdown */}
+              {/* Role & Class Badges */}
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor()}`}>
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                </span>
+                {getClassBadge() && (
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-dark-700 text-dark-300">
+                    {getClassBadge()}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Notification Bell */}
+              <NotificationBell />
+              
+              {/* Profile Menu */}
               <div className="relative">
                 <button
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                  className="flex items-center gap-2 p-1 rounded-full hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-dark-700 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white text-sm font-semibold">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white text-sm font-medium">
                     {user?.first_name?.[0]}{user?.last_name?.[0]}
                   </div>
                 </button>
-                
+
                 <AnimatePresence>
                   {profileMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-48 py-2 bg-dark-800 border border-dark-700 rounded-xl shadow-xl"
+                    >
+                      <NavLink
+                        to={`/${role}/profile`}
                         onClick={() => setProfileMenuOpen(false)}
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="dropdown-menu open"
+                        className="flex items-center gap-2 px-4 py-2 text-dark-300 hover:text-white hover:bg-dark-700"
                       >
-                        <div className="px-4 py-3 border-b border-dark-700">
-                          <p className="text-sm font-medium text-white">
-                            {user?.first_name} {user?.last_name}
-                          </p>
-                          <p className="text-xs text-dark-400">{user?.email}</p>
-                        </div>
-                        <NavLink
-                          to={`/${role}/profile`}
-                          onClick={() => setProfileMenuOpen(false)}
-                          className="dropdown-item"
-                        >
-                          <User className="w-4 h-4" />
-                          Profile
-                        </NavLink>
-                        <button onClick={handleLogout} className="dropdown-item w-full text-red-400">
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </motion.div>
-                    </>
+                        <User className="w-4 h-4" />
+                        Profile
+                      </NavLink>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-4 py-2 text-red-400 hover:text-red-300 hover:bg-dark-700 w-full"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
           </div>
         </header>
-        
-        {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+
+        {/* Page Content */}
+        <main className="p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

@@ -1,213 +1,212 @@
 """
 AI Chat Endpoints
-Conversational AI assistant
+Handle AI-powered chat interactions using Claude API
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List, Optional
-from uuid import UUID
-import secrets
+from pydantic import BaseModel
+from typing import Optional, List
+import anthropic
+import json
 import logging
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.models import User, ChatMessage
-from app.schemas.schemas import ChatRequest, ChatResponse
+from app.models.models import User, Subject
 from app.api.deps import get_current_active_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-
-# Simple rule-based responses for educational queries
-EDUCATIONAL_RESPONSES = {
-    "help": "I'm your Penlet study assistant! I can help you with:\n- Understanding subjects\n- Study tips\n- Assignment guidance\n- Exam preparation\n\nWhat would you like help with?",
-    "study": "Here are some effective study tips:\n1. Break study sessions into 25-minute chunks (Pomodoro)\n2. Review notes within 24 hours of class\n3. Practice active recall with flashcards\n4. Teach concepts to others\n5. Get enough sleep before exams",
-    "math": "For math problems, try these steps:\n1. Read the problem carefully\n2. Identify what you need to find\n3. Write down given information\n4. Choose the right formula\n5. Solve step by step\n6. Check your answer",
-    "exam": "Exam preparation tips:\n1. Start early - don't cram\n2. Create a study schedule\n3. Practice past papers\n4. Focus on weak areas\n5. Stay healthy - eat well and sleep\n6. Take breaks during study",
-    "essay": "Essay writing structure:\n1. Introduction - Hook + Thesis statement\n2. Body paragraphs - Topic sentence + Evidence + Analysis\n3. Conclusion - Summarize + Final thoughts\n4. Proofread before submitting",
-}
+# Initialize Anthropic client
+client = None
+if hasattr(settings, 'ANTHROPIC_API_KEY') and settings.ANTHROPIC_API_KEY:
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 
-async def get_ai_response(message: str, context: List[dict] = None) -> str:
-    """
-    Generate AI response using OpenAI API or fallback to rule-based.
-    """
-    message_lower = message.lower()
-    
-    # Check for keyword matches
-    for keyword, response in EDUCATIONAL_RESPONSES.items():
-        if keyword in message_lower:
-            return response
-    
-    # Check if AI API is configured
-    if settings.AI_API_KEY:
-        try:
-            import httpx
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.AI_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": settings.AI_MODEL,
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "You are a helpful educational assistant for students in Uganda. Help with subjects, study tips, and academic guidance. Keep responses concise and appropriate for secondary school students (Senior 1-6)."
-                            },
-                            {"role": "user", "content": message}
-                        ],
-                        "max_tokens": 500,
-                        "temperature": 0.7,
-                    },
-                    timeout=30.0,
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    return data["choices"][0]["message"]["content"]
-        except Exception as e:
-            logger.error(f"AI API error: {e}")
-    
-    # Default response
-    return (
-        "I'm here to help with your studies! You can ask me about:\n"
-        "- Study techniques\n"
-        "- Subject-specific help (math, science, English, etc.)\n"
-        "- Exam preparation\n"
-        "- Essay writing\n\n"
-        "What would you like to learn about today?"
-    )
+class ChatMessage(BaseModel):
+    role: str  # 'user' or 'assistant'
+    content: str
 
 
-@router.post("/", response_model=ChatResponse)
-async def send_message(
-    chat_request: ChatRequest,
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: Optional[List[ChatMessage]] = []
+    subject_context: Optional[str] = None  # Optional subject to focus on
+
+
+class ChatResponse(BaseModel):
+    response: str
+    tokens_used: Optional[int] = None
+
+
+# System prompt for educational assistant
+SYSTEM_PROMPT = """You are Penlet AI, a friendly and knowledgeable educational assistant designed to help Ugandan secondary school students (Senior 1-6) with their studies.
+
+Your key characteristics:
+- Patient and encouraging with students of all levels
+- Explain concepts clearly using simple language and relatable examples
+- Focus on the Ugandan curriculum (UNEB syllabus)
+- Help with subjects like Mathematics, Physics, Chemistry, Biology, English, History, Geography, etc.
+- When solving problems, show step-by-step solutions
+- Encourage critical thinking rather than just giving answers
+- Use examples relevant to Ugandan context when possible
+
+Guidelines:
+- Keep responses concise but comprehensive
+- Use bullet points and numbered lists for clarity when appropriate
+- If a student seems stuck, ask guiding questions
+- Celebrate progress and effort
+- If you don't know something specific to the Ugandan curriculum, say so honestly
+- Never do homework for students - guide them to understand
+
+{subject_context}
+
+Remember: Your goal is to help students learn and understand, not just to provide answers."""
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(
+    request: ChatRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Send a message to the AI chatbot."""
-    session_id = chat_request.session_id or secrets.token_urlsafe(16)
-    
-    # Save user message
-    user_message = ChatMessage(
-        user_id=current_user.id,
-        session_id=session_id,
-        role="user",
-        content=chat_request.message,
-    )
-    db.add(user_message)
-    
-    # Get conversation history for context
-    history_result = await db.execute(
-        select(ChatMessage)
-        .where(ChatMessage.session_id == session_id)
-        .order_by(ChatMessage.created_at.desc())
-        .limit(10)
-    )
-    history = history_result.scalars().all()
-    
-    context = [{"role": msg.role, "content": msg.content} for msg in reversed(history)]
-    
-    # Generate AI response
-    ai_response = await get_ai_response(chat_request.message, context)
-    
-    # Save AI response
-    assistant_message = ChatMessage(
-        user_id=current_user.id,
-        session_id=session_id,
-        role="assistant",
-        content=ai_response,
-    )
-    db.add(assistant_message)
-    await db.commit()
-    
-    return ChatResponse(
-        message=ai_response,
-        session_id=session_id
-    )
-
-
-@router.get("/history/{session_id}")
-async def get_chat_history(
-    session_id: str,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get chat history for a session."""
-    result = await db.execute(
-        select(ChatMessage)
-        .where(
-            ChatMessage.session_id == session_id,
-            ChatMessage.user_id == current_user.id
+    """Send a message to the AI assistant and get a response."""
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is not configured. Please contact administrator."
         )
-        .order_by(ChatMessage.created_at)
-    )
-    messages = result.scalars().all()
     
-    return [
-        {
-            "role": msg.role,
-            "content": msg.content,
-            "timestamp": msg.created_at
-        }
-        for msg in messages
-    ]
-
-
-@router.get("/sessions")
-async def get_chat_sessions(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get user's chat sessions."""
-    from sqlalchemy import func, distinct
-    
-    result = await db.execute(
-        select(
-            ChatMessage.session_id,
-            func.min(ChatMessage.created_at).label("started_at"),
-            func.max(ChatMessage.created_at).label("last_message"),
-            func.count(ChatMessage.id).label("message_count")
-        )
-        .where(ChatMessage.user_id == current_user.id)
-        .group_by(ChatMessage.session_id)
-        .order_by(func.max(ChatMessage.created_at).desc())
-        .limit(20)
-    )
-    
-    sessions = []
-    for row in result:
-        sessions.append({
-            "session_id": row.session_id,
-            "started_at": row.started_at,
-            "last_message": row.last_message,
-            "message_count": row.message_count
+    try:
+        # Build system prompt with optional subject context
+        subject_context = ""
+        if request.subject_context:
+            subject_context = f"\nCurrent subject focus: {request.subject_context}. Tailor your responses to this subject."
+        
+        system_prompt = SYSTEM_PROMPT.format(subject_context=subject_context)
+        
+        # Build messages list
+        messages = []
+        for msg in request.conversation_history[-10:]:  # Keep last 10 messages for context
+            messages.append({
+                "role": msg.role,
+                "content": msg.content
+            })
+        
+        # Add current message
+        messages.append({
+            "role": "user",
+            "content": request.message
         })
-    
-    return sessions
+        
+        # Call Claude API
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages
+        )
+        
+        assistant_message = response.content[0].text
+        tokens_used = response.usage.input_tokens + response.usage.output_tokens
+        
+        logger.info(f"Chat response generated for user {current_user.id}, tokens: {tokens_used}")
+        
+        return ChatResponse(
+            response=assistant_message,
+            tokens_used=tokens_used
+        )
+        
+    except anthropic.APIConnectionError:
+        logger.error("Failed to connect to Anthropic API")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to connect to AI service. Please try again later."
+        )
+    except anthropic.RateLimitError:
+        logger.error("Anthropic API rate limit exceeded")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="AI service is busy. Please wait a moment and try again."
+        )
+    except anthropic.APIStatusError as e:
+        logger.error(f"Anthropic API error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="AI service error. Please try again."
+        )
+    except Exception as e:
+        logger.error(f"Chat error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred."
+        )
 
 
-@router.delete("/sessions/{session_id}")
-async def delete_chat_session(
-    session_id: str,
+@router.post("/chat/stream")
+async def chat_stream(
+    request: ChatRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a chat session."""
-    from sqlalchemy import delete
-    
-    await db.execute(
-        delete(ChatMessage).where(
-            ChatMessage.session_id == session_id,
-            ChatMessage.user_id == current_user.id
+    """Send a message and stream the response for real-time display."""
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is not configured."
         )
+    
+    async def generate():
+        try:
+            subject_context = ""
+            if request.subject_context:
+                subject_context = f"\nCurrent subject focus: {request.subject_context}."
+            
+            system_prompt = SYSTEM_PROMPT.format(subject_context=subject_context)
+            
+            messages = []
+            for msg in request.conversation_history[-10:]:
+                messages.append({"role": msg.role, "content": msg.content})
+            messages.append({"role": "user", "content": request.message})
+            
+            with client.messages.stream(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1024,
+                system=system_prompt,
+                messages=messages
+            ) as stream:
+                for text in stream.text_stream:
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+            
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Stream error: {str(e)}")
+            yield f"data: {json.dumps({'error': 'An error occurred'})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
     )
-    await db.commit()
-    return {"message": "Session deleted"}
+
+
+@router.get("/chat/subjects")
+async def get_chat_subjects(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get list of subjects for context selection."""
+    result = await db.execute(
+        select(Subject).where(Subject.is_active == True).order_by(Subject.name)
+    )
+    subjects = result.scalars().all()
+    
+    return [{"id": str(s.id), "name": s.name} for s in subjects]

@@ -110,6 +110,7 @@ async def create_video(
         description=video_data.description,
         content_type=ContentType.VIDEO,
         file_url=video_data.file_url,
+        thumbnail_url=video_data.thumbnail_url,
         duration=video_data.duration,
         subject_id=video_data.subject_id,
         target_classes=[c.value for c in video_data.target_classes],

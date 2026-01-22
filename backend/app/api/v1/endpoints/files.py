@@ -5,6 +5,7 @@ Handle file uploads for notes, videos, assignments, and profile pictures
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from uuid import UUID, uuid4
@@ -13,6 +14,8 @@ import aiofiles
 import magic
 from datetime import datetime
 import logging
+import subprocess
+import asyncio
 
 from app.core.database import get_db
 from app.core.config import settings
@@ -27,6 +30,7 @@ logger = logging.getLogger(__name__)
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(f"{settings.UPLOAD_DIR}/notes", exist_ok=True)
 os.makedirs(f"{settings.UPLOAD_DIR}/videos", exist_ok=True)
+os.makedirs(f"{settings.UPLOAD_DIR}/thumbnails", exist_ok=True)
 os.makedirs(f"{settings.UPLOAD_DIR}/assignments", exist_ok=True)
 os.makedirs(f"{settings.UPLOAD_DIR}/submissions", exist_ok=True)
 os.makedirs(f"{settings.UPLOAD_DIR}/profiles", exist_ok=True)
@@ -45,6 +49,13 @@ MIME_TYPES = {
     ".png": "image/png",
     ".gif": "image/gif",
     ".webp": "image/webp",
+}
+
+# CORS headers for file responses
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "*",
 }
 
 
@@ -96,6 +107,60 @@ def generate_unique_filename(original_filename: str) -> str:
     return f"{timestamp}_{unique_id}{ext}"
 
 
+async def generate_video_thumbnail(video_path: str, thumbnail_path: str, time_offset: str = "00:00:01") -> bool:
+    """
+    Generate a thumbnail from a video using FFmpeg.
+    
+    Args:
+        video_path: Path to the video file
+        thumbnail_path: Path where thumbnail will be saved
+        time_offset: Time offset to capture frame (default: 1 second)
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # FFmpeg command to extract a frame
+        # -ss: seek to time offset
+        # -i: input file
+        # -vframes 1: extract only 1 frame
+        # -vf scale: resize to max 480px width while maintaining aspect ratio
+        # -q:v 2: high quality JPEG
+        cmd = [
+            "ffmpeg",
+            "-ss", time_offset,
+            "-i", video_path,
+            "-vframes", "1",
+            "-vf", "scale=480:-1",
+            "-q:v", "2",
+            "-y",  # Overwrite output file if exists
+            thumbnail_path
+        ]
+        
+        # Run FFmpeg asynchronously
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0 and os.path.exists(thumbnail_path):
+            logger.info(f"Thumbnail generated: {thumbnail_path}")
+            return True
+        else:
+            logger.warning(f"FFmpeg failed: {stderr.decode()}")
+            return False
+            
+    except FileNotFoundError:
+        logger.warning("FFmpeg not installed. Thumbnail generation skipped.")
+        return False
+    except Exception as e:
+        logger.error(f"Error generating thumbnail: {str(e)}")
+        return False
+
+
 @router.post("/upload/note", response_model=FileUploadResponse)
 async def upload_note(
     file: UploadFile = File(...),
@@ -135,7 +200,7 @@ async def upload_video(
     current_user: User = Depends(get_teacher_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Upload a video file."""
+    """Upload a video file and auto-generate thumbnail."""
     allowed_types = ["video/mp4", "video/webm", "video/quicktime"]
     is_valid, error, mime_type = validate_file(file, allowed_types, max_size_mb=500)
     
@@ -152,13 +217,22 @@ async def upload_video(
     file.file.seek(0, 2)
     file_size = file.file.tell()
     
+    # Generate thumbnail
+    thumbnail_url = None
+    thumbnail_filename = os.path.splitext(filename)[0] + ".jpg"
+    thumbnail_path = f"{settings.UPLOAD_DIR}/thumbnails/{thumbnail_filename}"
+    
+    if await generate_video_thumbnail(file_path, thumbnail_path):
+        thumbnail_url = f"/files/thumbnails/{thumbnail_filename}"
+    
     logger.info(f"Video uploaded: {filename} by user {current_user.id}")
     
     return FileUploadResponse(
         file_url=f"/files/videos/{filename}",
         file_name=file.filename,
         file_size=file_size,
-        mime_type=mime_type
+        mime_type=mime_type,
+        thumbnail_url=thumbnail_url
     )
 
 
@@ -246,6 +320,43 @@ async def upload_profile_picture(
     )
 
 
+@router.post("/upload/thumbnail", response_model=FileUploadResponse)
+async def upload_thumbnail(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_teacher_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a video thumbnail image."""
+    allowed_types = ["image/jpeg", "image/png", "image/webp"]
+    is_valid, error, mime_type = validate_file(file, allowed_types, max_size_mb=5)
+    
+    if not is_valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    
+    filename = generate_unique_filename(file.filename or "thumbnail.jpg")
+    # Ensure .jpg extension
+    if not filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+        filename = filename.rsplit('.', 1)[0] + '.jpg'
+    
+    file_path = f"{settings.UPLOAD_DIR}/thumbnails/{filename}"
+    
+    async with aiofiles.open(file_path, "wb") as f:
+        content = await file.read()
+        await f.write(content)
+    
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    
+    logger.info(f"Thumbnail uploaded: {filename} by user {current_user.id}")
+    
+    return FileUploadResponse(
+        file_url=f"/files/thumbnails/{filename}",
+        file_name=file.filename,
+        file_size=file_size,
+        mime_type=mime_type
+    )
+
+
 @router.delete("/delete/{file_type}/{filename}")
 async def delete_file(
     file_type: str,
@@ -268,25 +379,49 @@ async def delete_file(
     return {"message": "File deleted successfully"}
 
 
+# ============ FILE SERVING ENDPOINTS WITH CORS ============
+
 @router.get("/notes/{filename}")
 async def get_note(filename: str):
-    """Serve a note file."""
+    """Serve a note file with CORS headers."""
+    # Prevent directory traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_path = f"{settings.UPLOAD_DIR}/notes/{filename}"
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     
     mime_type = get_mime_type(filename)
-    return FileResponse(
-        file_path, 
+    
+    # Read file and return with CORS headers
+    with open(file_path, "rb") as f:
+        content = f.read()
+    
+    return Response(
+        content=content,
         media_type=mime_type,
-        headers={"Content-Disposition": f"inline; filename={filename}"}
+        headers={
+            "Content-Disposition": f"inline; filename={filename}",
+            **CORS_HEADERS,
+        }
     )
+
+
+@router.options("/notes/{filename}")
+async def options_note(filename: str):
+    """Handle CORS preflight for notes."""
+    return Response(content="", headers=CORS_HEADERS)
 
 
 @router.get("/videos/{filename}")
 async def get_video(filename: str):
-    """Serve a video file with streaming support."""
+    """Serve a video file with streaming support and CORS headers."""
+    # Prevent directory traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_path = f"{settings.UPLOAD_DIR}/videos/{filename}"
     
     if not os.path.exists(file_path):
@@ -308,33 +443,106 @@ async def get_video(filename: str):
         headers={
             "Content-Length": str(file_size),
             "Accept-Ranges": "bytes",
+            **CORS_HEADERS,
         }
     )
 
 
+@router.options("/videos/{filename}")
+async def options_video(filename: str):
+    """Handle CORS preflight for videos."""
+    return Response(content="", headers=CORS_HEADERS)
+
+
 @router.get("/submissions/{filename}")
 async def get_submission(filename: str):
-    """Serve a submission file."""
+    """Serve a submission file with CORS headers."""
+    # Prevent directory traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_path = f"{settings.UPLOAD_DIR}/submissions/{filename}"
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     
     mime_type = get_mime_type(filename)
-    return FileResponse(
-        file_path,
+    
+    # Read file and return with CORS headers
+    with open(file_path, "rb") as f:
+        content = f.read()
+    
+    return Response(
+        content=content,
         media_type=mime_type,
-        headers={"Content-Disposition": f"inline; filename={filename}"}
+        headers={
+            "Content-Disposition": f"inline; filename={filename}",
+            **CORS_HEADERS,
+        }
     )
+
+
+@router.options("/submissions/{filename}")
+async def options_submission(filename: str):
+    """Handle CORS preflight for submissions."""
+    return Response(content="", headers=CORS_HEADERS)
 
 
 @router.get("/profiles/{filename}")
 async def get_profile_picture(filename: str):
-    """Serve a profile picture."""
+    """Serve a profile picture with CORS headers."""
+    # Prevent directory traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_path = f"{settings.UPLOAD_DIR}/profiles/{filename}"
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     
     mime_type = get_mime_type(filename)
-    return FileResponse(file_path, media_type=mime_type)
+    
+    # Read file and return with CORS headers
+    with open(file_path, "rb") as f:
+        content = f.read()
+    
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers=CORS_HEADERS,
+    )
+
+
+@router.options("/profiles/{filename}")
+async def options_profile(filename: str):
+    """Handle CORS preflight for profiles."""
+    return Response(content="", headers=CORS_HEADERS)
+
+
+@router.get("/thumbnails/{filename}")
+async def get_thumbnail(filename: str):
+    """Serve a video thumbnail with CORS headers."""
+    # Prevent directory traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    file_path = f"{settings.UPLOAD_DIR}/thumbnails/{filename}"
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail not found")
+    
+    # Read file and return with CORS headers
+    with open(file_path, "rb") as f:
+        content = f.read()
+    
+    return Response(
+        content=content,
+        media_type="image/jpeg",
+        headers=CORS_HEADERS,
+    )
+
+
+@router.options("/thumbnails/{filename}")
+async def options_thumbnail(filename: str):
+    """Handle CORS preflight for thumbnails."""
+    return Response(content="", headers=CORS_HEADERS)

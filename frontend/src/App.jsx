@@ -40,6 +40,11 @@ import AdminAnalytics from './pages/admin/Analytics';
 import AdminSettings from './pages/admin/Settings';
 import AdminProfile from './pages/admin/Profile';
 
+//email verification
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+
 // Protected Route wrapper
 function ProtectedRoute({ children, allowedRoles }) {
   const { isAuthenticated, user } = useAuthStore();
@@ -93,6 +98,11 @@ export default function App() {
           <RoleRedirect />
         </ProtectedRoute>
       } />
+
+      {/*email verification*/}
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       
       {/* Student Routes */}
       <Route path="/student" element={

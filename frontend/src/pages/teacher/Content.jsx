@@ -2,11 +2,19 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Video, ClipboardList, Plus, Upload, X, Loader2, Eye, Trash2, Download } from 'lucide-react';
+import { FileText, Video, ClipboardList, Plus, Upload, X, Loader2, Eye, Trash2, Download, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { contentAPI, subjectsAPI, filesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+// Import react-pdf styles
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '');
 
 const CONTENT_TYPES = [
   { id: 'note', label: 'Notes', icon: FileText, color: 'primary' },
@@ -22,6 +30,13 @@ export default function TeacherContent() {
   const [contentType, setContentType] = useState('note');
   const [uploadingFile, setUploadingFile] = useState(false);
   const queryClient = useQueryClient();
+
+  // PDF viewer state
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [scale, setScale] = useState(1.0);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfError, setPdfError] = useState(null);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm();
 
@@ -58,6 +73,41 @@ export default function TeacherContent() {
     },
   });
 
+  // Generate thumbnail from video file using Canvas API
+  const generateVideoThumbnail = (file) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      
+      video.onloadeddata = () => {
+        video.currentTime = Math.min(1, video.duration * 0.1);
+      };
+      
+      video.onseeked = () => {
+        const scale = Math.min(1, 480 / video.videoWidth);
+        canvas.width = video.videoWidth * scale;
+        canvas.height = video.videoHeight * scale;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' }));
+          } else {
+            resolve(null);
+          }
+        }, 'image/jpeg', 0.8);
+        URL.revokeObjectURL(video.src);
+      };
+      
+      video.onerror = () => resolve(null);
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -65,15 +115,32 @@ export default function TeacherContent() {
     setUploadingFile(true);
     try {
       let response;
+      let thumbnailUrl = null;
+      
       if (contentType === 'note') {
         response = await filesAPI.uploadNote(file);
       } else if (contentType === 'video') {
+        const thumbnailFile = await generateVideoThumbnail(file);
         response = await filesAPI.uploadVideo(file);
+        
+        if (response.data.thumbnail_url) {
+          thumbnailUrl = response.data.thumbnail_url;
+        } else if (thumbnailFile) {
+          try {
+            const thumbResponse = await filesAPI.uploadThumbnail(thumbnailFile);
+            thumbnailUrl = thumbResponse.data.file_url;
+          } catch {
+            console.log('Frontend thumbnail upload failed');
+          }
+        }
       } else {
         response = await filesAPI.uploadSubmission(file);
       }
+      
       setValue('file_url', response.data.file_url);
       setValue('file_size', response.data.file_size);
+      if (thumbnailUrl) setValue('thumbnail_url', thumbnailUrl);
+      
       toast.success('File uploaded');
     } catch (err) {
       toast.error('Failed to upload file');
@@ -82,7 +149,6 @@ export default function TeacherContent() {
   };
 
   const onSubmit = (data) => {
-    // Validate file upload is present
     if (!data.file_url) {
       toast.error('Please upload a file');
       return;
@@ -102,8 +168,48 @@ export default function TeacherContent() {
   const getFileUrl = (fileUrl) => {
     if (!fileUrl) return null;
     if (fileUrl.startsWith('http')) return fileUrl;
-    return `${API_URL}${fileUrl}`;
+    if (fileUrl.startsWith('/api/v1')) {
+      return `${API_BASE_URL}${fileUrl}`;
+    }
+    return `${API_BASE_URL}/api/v1${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
   };
+
+  // PDF viewer handlers
+  const handleViewContent = (item) => {
+    setViewContent(item);
+    setPageNumber(1);
+    setScale(1.0);
+    setPdfLoading(true);
+    setPdfError(null);
+    setNumPages(null);
+  };
+
+  const handleCloseViewer = () => {
+    setViewContent(null);
+    setPageNumber(1);
+    setScale(1.0);
+    setPdfLoading(true);
+    setPdfError(null);
+    setNumPages(null);
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+    setPdfLoading(false);
+  };
+
+  const onDocumentLoadError = (error) => {
+    console.error('PDF load error:', error);
+    setPdfError('Failed to load PDF');
+    setPdfLoading(false);
+  };
+
+  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages || 1));
+  const zoomIn = () => setScale(prev => Math.min(prev + 0.2, 2.5));
+  const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
+
+  const isPdf = (fileUrl) => fileUrl?.toLowerCase().includes('.pdf');
 
   return (
     <div className="space-y-6">
@@ -150,7 +256,7 @@ export default function TeacherContent() {
                   <span className="text-xs text-dark-500">{item.target_classes?.join(', ') || 'All classes'}</span>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => setViewContent(item)}
+                      onClick={() => handleViewContent(item)}
                       className="p-2 text-dark-400 hover:text-white"
                       title="View"
                     >
@@ -179,132 +285,217 @@ export default function TeacherContent() {
         </div>
       )}
 
-      {/* Content Viewer Modal */}
+      {/* Content Viewer Modal with react-pdf */}
       <AnimatePresence>
         {viewContent && (
           <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-            onClick={() => setViewContent(null)}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={handleCloseViewer}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-4xl bg-dark-800 rounded-2xl border border-dark-700 my-auto"
+              className="w-full max-w-5xl h-[90vh] bg-dark-800 rounded-2xl border border-dark-700 overflow-hidden flex flex-col"
               onClick={e => e.stopPropagation()}
             >
+              {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-dark-700">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">{viewContent.title}</h2>
-                  <p className="text-sm text-dark-400">{viewContent.subject?.name} • {viewContent.content_type}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                    {viewContent.content_type === 'video' ? (
+                      <Video className="w-5 h-5 text-primary-400" />
+                    ) : viewContent.content_type === 'assignment' ? (
+                      <ClipboardList className="w-5 h-5 text-primary-400" />
+                    ) : (
+                      <FileText className="w-5 h-5 text-primary-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">{viewContent.title}</h2>
+                    <p className="text-sm text-dark-400">{viewContent.subject?.name} • {viewContent.content_type}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {viewContent.file_url && (
                     <a
                       href={getFileUrl(viewContent.file_url)}
                       download
-                      className="btn-secondary py-2 px-3 text-sm flex items-center gap-1"
+                      className="btn-gradient py-2 px-3 text-sm flex items-center gap-1"
                     >
                       <Download className="w-4 h-4" /> Download
                     </a>
                   )}
-                  <button onClick={() => setViewContent(null)} className="p-2 text-dark-400 hover:text-white">
+                  <button onClick={handleCloseViewer} className="p-2 text-dark-400 hover:text-white">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
-              <div className="p-6 max-h-[75vh] overflow-y-auto">
-                {/* Assignment Details */}
-                {viewContent.content_type === 'assignment' && (
-                  <div className="space-y-4 mb-6">
-                    <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="bg-dark-700/50 rounded-xl p-4">
-                        <p className="text-sm text-dark-400 mb-1">Due Date</p>
-                        <p className="text-white font-medium">
+
+              {/* Assignment/Content Details */}
+              {(viewContent.content_type === 'assignment' || viewContent.description) && (
+                <div className="p-4 border-b border-dark-700 bg-dark-750 space-y-3">
+                  {viewContent.content_type === 'assignment' && (
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="bg-dark-700/50 rounded-xl p-3">
+                        <p className="text-xs text-dark-400 mb-1">Due Date</p>
+                        <p className="text-white text-sm font-medium">
                           {viewContent.due_date ? new Date(viewContent.due_date).toLocaleString() : 'Not set'}
                         </p>
                       </div>
-                      <div className="bg-dark-700/50 rounded-xl p-4">
-                        <p className="text-sm text-dark-400 mb-1">Maximum Score</p>
-                        <p className="text-white font-medium">{viewContent.max_score || 100} points</p>
+                      <div className="bg-dark-700/50 rounded-xl p-3">
+                        <p className="text-xs text-dark-400 mb-1">Maximum Score</p>
+                        <p className="text-white text-sm font-medium">{viewContent.max_score || 100} points</p>
                       </div>
-                      <div className="bg-dark-700/50 rounded-xl p-4">
-                        <p className="text-sm text-dark-400 mb-1">Late Submission</p>
-                        <p className="text-white font-medium">{viewContent.allow_late_submission ? 'Allowed' : 'Not Allowed'}</p>
+                      <div className="bg-dark-700/50 rounded-xl p-3">
+                        <p className="text-xs text-dark-400 mb-1">Late Submission</p>
+                        <p className="text-white text-sm font-medium">{viewContent.allow_late_submission ? 'Allowed' : 'Not Allowed'}</p>
                       </div>
                     </div>
+                  )}
+                  {viewContent.instructions && (
+                    <div className="bg-dark-700/50 rounded-xl p-3">
+                      <p className="text-xs text-dark-400 mb-1">Instructions</p>
+                      <p className="text-dark-300 text-sm">{viewContent.instructions}</p>
+                    </div>
+                  )}
+                  {viewContent.description && (
+                    <div className="bg-dark-700/50 rounded-xl p-3">
+                      <p className="text-xs text-dark-400 mb-1">Description</p>
+                      <p className="text-dark-300 text-sm">{viewContent.description}</p>
+                    </div>
+                  )}
+                  {viewContent.target_classes?.length > 0 && (
+                    <p className="text-xs text-dark-400">
+                      <span className="text-white">Target Classes:</span> {viewContent.target_classes.join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
 
-                    {viewContent.instructions && (
-                      <div>
-                        <h3 className="text-white font-medium mb-2">Instructions</h3>
-                        <div className="bg-dark-700/50 rounded-xl p-4">
-                          <p className="text-dark-300 whitespace-pre-wrap">{viewContent.instructions}</p>
+              {/* PDF Controls */}
+              {viewContent.file_url && isPdf(viewContent.file_url) && !pdfLoading && !pdfError && numPages && (
+                <div className="flex items-center justify-center gap-4 p-3 border-b border-dark-700 bg-dark-750">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={pageNumber <= 1}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-dark-300 text-sm min-w-[100px] text-center">
+                      Page {pageNumber} of {numPages}
+                    </span>
+                    <button
+                      onClick={goToNextPage}
+                      disabled={pageNumber >= numPages}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 border-l border-dark-600 pl-4">
+                    <button
+                      onClick={zoomOut}
+                      disabled={scale <= 0.5}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ZoomOut className="w-5 h-5" />
+                    </button>
+                    <span className="text-dark-300 text-sm min-w-[60px] text-center">
+                      {Math.round(scale * 100)}%
+                    </span>
+                    <button
+                      onClick={zoomIn}
+                      disabled={scale >= 2.5}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ZoomIn className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Content Display */}
+              <div className="flex-1 overflow-auto bg-dark-700/50 flex justify-center p-4">
+                {viewContent.file_url ? (
+                  viewContent.content_type === 'video' ? (
+                    <video 
+                      controls 
+                      className="max-w-full max-h-full rounded-lg bg-black"
+                      src={getFileUrl(viewContent.file_url)}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : isPdf(viewContent.file_url) ? (
+                    <>
+                      {pdfLoading && (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <Loader2 className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-2" />
+                            <p className="text-dark-400">Loading PDF...</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
 
-                {/* Description */}
-                {viewContent.description && (
-                  <div className="mb-4">
-                    <h3 className="text-white font-medium mb-2">Description</h3>
-                    <div className="bg-dark-700/50 rounded-xl p-4">
-                      <p className="text-dark-300">{viewContent.description}</p>
-                    </div>
-                  </div>
-                )}
+                      {pdfError && (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center p-8">
+                            <FileText className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-white mb-2">Unable to load PDF</h3>
+                            <p className="text-dark-400 mb-4">{pdfError}</p>
+                            <a
+                              href={getFileUrl(viewContent.file_url)}
+                              download
+                              className="btn-gradient inline-flex items-center gap-2"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Instead
+                            </a>
+                          </div>
+                        </div>
+                      )}
 
-                {/* File Preview */}
-                {viewContent.file_url && (
-                  <div>
-                    <h3 className="text-white font-medium mb-2">Attached File</h3>
-                    {viewContent.content_type === 'video' ? (
-                      <video 
-                        controls 
-                        className="w-full rounded-lg bg-black"
-                        src={getFileUrl(viewContent.file_url)}
+                      <Document
+                        file={getFileUrl(viewContent.file_url)}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        onLoadError={onDocumentLoadError}
+                        loading=""
+                        className={pdfLoading || pdfError ? 'hidden' : ''}
                       >
-                        Your browser does not support the video tag.
-                      </video>
-                    ) : viewContent.file_url?.includes('.pdf') ? (
-                      <iframe
-                        src={getFileUrl(viewContent.file_url)}
-                        className="w-full h-[60vh] rounded-lg border border-dark-700"
-                        title={viewContent.title}
-                      />
-                    ) : (
+                        <Page
+                          pageNumber={pageNumber}
+                          scale={scale}
+                          renderTextLayer={true}
+                          renderAnnotationLayer={true}
+                          className="shadow-xl"
+                        />
+                      </Document>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
                       <a
                         href={getFileUrl(viewContent.file_url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 bg-dark-700/50 rounded-xl p-4 hover:bg-dark-700 transition-colors"
+                        className="flex items-center gap-3 bg-dark-700/50 rounded-xl p-6 hover:bg-dark-700 transition-colors"
                       >
-                        <FileText className="w-8 h-8 text-primary-400" />
-                        <div className="flex-1">
-                          <p className="text-white">View Attachment</p>
+                        <FileText className="w-10 h-10 text-primary-400" />
+                        <div>
+                          <p className="text-white font-medium">View Attachment</p>
                           <p className="text-sm text-dark-400">Click to download</p>
                         </div>
-                        <Download className="w-5 h-5 text-dark-400" />
+                        <Download className="w-6 h-6 text-dark-400" />
                       </a>
-                    )}
-                  </div>
-                )}
-
-                {/* No file message for assignments */}
-                {!viewContent.file_url && viewContent.content_type === 'assignment' && (
-                  <div className="bg-dark-700/30 rounded-xl p-6 text-center">
-                    <FileText className="w-12 h-12 text-dark-500 mx-auto mb-2" />
-                    <p className="text-dark-400">No file attached to this assignment</p>
-                  </div>
-                )}
-
-                {/* Target Classes */}
-                {viewContent.target_classes?.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-dark-700">
-                    <p className="text-sm text-dark-400">
-                      <span className="text-white">Target Classes:</span> {viewContent.target_classes.join(', ')}
-                    </p>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <FileText className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">No file attached</p>
+                    </div>
                   </div>
                 )}
               </div>
