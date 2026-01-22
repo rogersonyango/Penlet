@@ -84,12 +84,14 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     
     # Email Configuration
-    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    EMAILS_FROM_EMAIL: str = "noreply@penlet.ug"
-    EMAILS_FROM_NAME: str = "Penlet Education"
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    FROM_EMAIL: Optional[str] = None
+    FROM_NAME: str = "Penlet"
+    SMTP_USE_TLS: bool = True
+    FRONTEND_URL: str = "http://localhost:5173"
     
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -101,8 +103,8 @@ class Settings(BaseSettings):
     BACKUP_RETENTION_DAYS: int = 30
     
     # AI Chatbot (OpenAI or similar)
-    AI_API_KEY: Optional[str] = None
-    AI_MODEL: str = "gpt-3.5-turbo"
+    ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_MODEL: str = "anthropic sonnet 4.5"
     
     class Config:
         env_file = ".env"

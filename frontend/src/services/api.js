@@ -88,7 +88,12 @@ export const authAPI = {
   me: () => api.get('/auth/me'),
   refresh: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
   resetPasswordRequest: (email) => api.post('/auth/password-reset-request', { email }),
-  resetPassword: (token, newPassword) => api.post('/auth/password-reset', { token, new_password: newPassword }),
+  verifyEmail: (token) => api.post('/auth/verify-email', null, { params: { token } }),
+  resendVerification: (email) => api.post('/auth/resend-verification', null, { params: { email } }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', null, { params: { email } }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', null, { 
+    params: { token, new_password: newPassword } 
+  }),
 };
 
 export const usersAPI = {
@@ -165,7 +170,7 @@ export const alarmsAPI = {
   create: (data) => api.post('/alarms/', data),
   update: (id, data) => api.put(`/alarms/${id}`, data),
   delete: (id) => api.delete(`/alarms/${id}`),
-  snooze: (id, data) => api.post(`/alarms/${id}/snooze`, data),
+  snooze: (id, minutes) => api.post(`/alarms/${id}/snooze`, { snooze_minutes: minutes }),
   dismiss: (id) => api.post(`/alarms/${id}/dismiss`),
   todayAlarms: () => api.get('/alarms/upcoming/today'),
 };
@@ -181,10 +186,11 @@ export const gamesAPI = {
 
 export const notificationsAPI = {
   list: (params) => api.get('/notifications/', { params }),
-  count: () => api.get('/notifications/count'),
-  markAsRead: (id) => api.post(`/notifications/${id}/read`),
-  markAllAsRead: () => api.post('/notifications/read-all'),
+  unreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (id) => api.post(`/notifications/${id}/read`),
+  markAllRead: () => api.post('/notifications/mark-all-read'),
   delete: (id) => api.delete(`/notifications/${id}`),
+  clearAll: () => api.delete('/notifications/clear-all'),
 };
 
 export const analyticsAPI = {
@@ -196,10 +202,9 @@ export const analyticsAPI = {
 };
 
 export const chatAPI = {
-  send: (data) => api.post('/chat', data),
-  history: (sessionId) => api.get(`/chat/history/${sessionId}`),
-  sessions: () => api.get('/chat/sessions'),
-  deleteSession: (sessionId) => api.delete(`/chat/sessions/${sessionId}`),
+  send: (data) => api.post('/chat/chat', data),
+  stream: (data) => api.post('/chat/chat/stream', data),
+  getSubjects: () => api.get('/chat/subjects'),
 };
 
 export const filesAPI = {
@@ -228,6 +233,13 @@ export const filesAPI = {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/files/upload/profile-picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadThumbnail: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/files/upload/thumbnail', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },

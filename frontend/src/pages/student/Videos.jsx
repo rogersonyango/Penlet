@@ -58,8 +58,17 @@ export default function StudentVideos() {
               onClick={() => setPlayingVideo(video)}
             >
               <div className="aspect-video bg-dark-700 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden">
-                <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play className="w-8 h-8 text-white ml-1" />
+                {video.thumbnail_url ? (
+                  <img 
+                    src={getFileUrl(video.thumbnail_url)} 
+                    alt={video.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : null}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                  <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Play className="w-8 h-8 text-white ml-1" />
+                  </div>
                 </div>
               </div>
               <h3 className="font-medium text-white group-hover:text-primary-400 transition-colors">{video.title}</h3>

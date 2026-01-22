@@ -1,19 +1,34 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardList, Clock, CheckCircle, AlertCircle, Upload, Eye, X, Download, FileText, Loader2 } from 'lucide-react';
+import { ClipboardList, Clock, CheckCircle, AlertCircle, Upload, Eye, X, Download, FileText, Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { contentAPI, submissionsAPI, filesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+// Import react-pdf styles
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '');
 
 export default function StudentAssignments() {
   const [filter, setFilter] = useState('all');
-  const [viewAssignment, setViewAssignment] = useState(null); // For viewing the file/details
-  const [submitAssignment, setSubmitAssignment] = useState(null); // For submission modal
+  const [viewAssignment, setViewAssignment] = useState(null);
+  const [submitAssignment, setSubmitAssignment] = useState(null);
   const [submissionFile, setSubmissionFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
+
+  // PDF viewer state
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [scale, setScale] = useState(1.0);
+  const [pdfLoading, setPdfLoading] = useState(true);
+  const [pdfError, setPdfError] = useState(null);
 
   const { data: assignments, isLoading } = useQuery({
     queryKey: ['assignments'],
@@ -39,7 +54,10 @@ export default function StudentAssignments() {
   const getFileUrl = (fileUrl) => {
     if (!fileUrl) return null;
     if (fileUrl.startsWith('http')) return fileUrl;
-    return `${API_URL}${fileUrl}`;
+    if (fileUrl.startsWith('/api/v1')) {
+      return `${API_BASE_URL}${fileUrl}`;
+    }
+    return `${API_BASE_URL}/api/v1${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
   };
 
   const getSubmissionForAssignment = (assignmentId) => {
@@ -100,6 +118,41 @@ export default function StudentAssignments() {
     return true;
   });
 
+  // PDF viewer handlers
+  const handleViewAssignment = (assignment) => {
+    setViewAssignment(assignment);
+    setPageNumber(1);
+    setScale(1.0);
+    setPdfLoading(true);
+    setPdfError(null);
+    setNumPages(null);
+  };
+
+  const handleCloseViewer = () => {
+    setViewAssignment(null);
+    setPageNumber(1);
+    setScale(1.0);
+    setPdfLoading(true);
+    setPdfError(null);
+    setNumPages(null);
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+    setPdfLoading(false);
+  };
+
+  const onDocumentLoadError = (error) => {
+    console.error('PDF load error:', error);
+    setPdfError('Failed to load PDF');
+    setPdfLoading(false);
+  };
+
+  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
+  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages || 1));
+  const zoomIn = () => setScale(prev => Math.min(prev + 0.2, 2.5));
+  const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
+
   return (
     <div className="space-y-6">
       <div>
@@ -157,14 +210,12 @@ export default function StudentAssignments() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* View button - always visible to see assignment details/file */}
                     <button 
-                      onClick={() => setViewAssignment(assignment)}
+                      onClick={() => handleViewAssignment(assignment)}
                       className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
                     >
                       <Eye className="w-4 h-4" /> View
                     </button>
-                    {/* Submit button - opens submission modal */}
                     {canSubmit && (
                       <button 
                         onClick={() => setSubmitAssignment(assignment)}
@@ -173,7 +224,6 @@ export default function StudentAssignments() {
                         <Upload className="w-4 h-4" /> Submit
                       </button>
                     )}
-                    {/* View Submission button - if already submitted */}
                     {submission && (
                       <button 
                         onClick={() => setSubmitAssignment(assignment)}
@@ -198,113 +248,191 @@ export default function StudentAssignments() {
         </div>
       )}
 
-      {/* File Viewer Modal - For viewing the assignment details and file (PDF/Word) */}
+      {/* Assignment Viewer Modal with react-pdf */}
       <AnimatePresence>
         {viewAssignment && (
           <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-            onClick={() => setViewAssignment(null)}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={handleCloseViewer}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-5xl bg-dark-800 rounded-2xl border border-dark-700 my-auto"
+              className="w-full max-w-5xl h-[90vh] bg-dark-800 rounded-2xl border border-dark-700 overflow-hidden flex flex-col"
               onClick={e => e.stopPropagation()}
             >
+              {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-dark-700">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">{viewAssignment.title}</h2>
-                  <p className="text-sm text-dark-400">{viewAssignment.subject?.name}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent-500/20 flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-accent-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">{viewAssignment.title}</h2>
+                    <p className="text-sm text-dark-400">{viewAssignment.subject?.name}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {viewAssignment.file_url && (
                     <a
                       href={getFileUrl(viewAssignment.file_url)}
                       download
-                      className="btn-secondary py-2 px-3 text-sm flex items-center gap-1"
+                      className="btn-gradient py-2 px-3 text-sm flex items-center gap-1"
                     >
                       <Download className="w-4 h-4" /> Download
                     </a>
                   )}
-                  <button onClick={() => setViewAssignment(null)} className="p-2 text-dark-400 hover:text-white">
+                  <button 
+                    onClick={handleCloseViewer} 
+                    className="p-2 text-dark-400 hover:text-white"
+                  >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
-              
-              <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
-                {/* Assignment Details */}
+
+              {/* Assignment Details */}
+              <div className="p-4 border-b border-dark-700 bg-dark-750">
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <p className="text-sm text-dark-400 mb-1">Due Date</p>
-                    <p className="text-white font-medium">
+                  <div className="bg-dark-700/50 rounded-xl p-3">
+                    <p className="text-xs text-dark-400 mb-1">Due Date</p>
+                    <p className="text-white text-sm font-medium">
                       {new Date(viewAssignment.due_date).toLocaleString()}
                     </p>
                   </div>
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <p className="text-sm text-dark-400 mb-1">Maximum Score</p>
-                    <p className="text-white font-medium">{viewAssignment.max_score} points</p>
+                  <div className="bg-dark-700/50 rounded-xl p-3">
+                    <p className="text-xs text-dark-400 mb-1">Maximum Score</p>
+                    <p className="text-white text-sm font-medium">{viewAssignment.max_score} points</p>
                   </div>
-                  <div className="bg-dark-700/50 rounded-xl p-4">
-                    <p className="text-sm text-dark-400 mb-1">Late Submission</p>
-                    <p className="text-white font-medium">{viewAssignment.allow_late_submission ? 'Allowed' : 'Not Allowed'}</p>
+                  <div className="bg-dark-700/50 rounded-xl p-3">
+                    <p className="text-xs text-dark-400 mb-1">Late Submission</p>
+                    <p className="text-white text-sm font-medium">{viewAssignment.allow_late_submission ? 'Allowed' : 'Not Allowed'}</p>
                   </div>
                 </div>
-
-                {/* Instructions */}
                 {viewAssignment.instructions && (
-                  <div>
-                    <h3 className="text-white font-medium mb-2">Instructions</h3>
-                    <div className="bg-dark-700/50 rounded-xl p-4">
-                      <p className="text-dark-300 whitespace-pre-wrap">{viewAssignment.instructions}</p>
-                    </div>
+                  <div className="mt-3 bg-dark-700/50 rounded-xl p-3">
+                    <p className="text-xs text-dark-400 mb-1">Instructions</p>
+                    <p className="text-dark-300 text-sm">{viewAssignment.instructions}</p>
                   </div>
                 )}
+              </div>
 
-                {/* Description */}
-                {viewAssignment.description && (
-                  <div>
-                    <h3 className="text-white font-medium mb-2">Description</h3>
-                    <div className="bg-dark-700/50 rounded-xl p-4">
-                      <p className="text-dark-300">{viewAssignment.description}</p>
-                    </div>
+              {/* PDF Controls */}
+              {viewAssignment.file_url && viewAssignment.file_url.toLowerCase().includes('.pdf') && !pdfLoading && !pdfError && numPages && (
+                <div className="flex items-center justify-center gap-4 p-3 border-b border-dark-700 bg-dark-750">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={pageNumber <= 1}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-dark-300 text-sm min-w-[100px] text-center">
+                      Page {pageNumber} of {numPages}
+                    </span>
+                    <button
+                      onClick={goToNextPage}
+                      disabled={pageNumber >= numPages}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
                   </div>
-                )}
+                  <div className="flex items-center gap-2 border-l border-dark-600 pl-4">
+                    <button
+                      onClick={zoomOut}
+                      disabled={scale <= 0.5}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ZoomOut className="w-5 h-5" />
+                    </button>
+                    <span className="text-dark-300 text-sm min-w-[60px] text-center">
+                      {Math.round(scale * 100)}%
+                    </span>
+                    <button
+                      onClick={zoomIn}
+                      disabled={scale >= 2.5}
+                      className="p-2 rounded-lg bg-dark-700 text-dark-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ZoomIn className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                {/* File Preview - Show PDF inline like notes */}
-                {viewAssignment.file_url && (
-                  <div>
-                    <h3 className="text-white font-medium mb-2">Assignment File</h3>
-                    {viewAssignment.file_url.includes('.pdf') ? (
-                      <iframe
-                        src={getFileUrl(viewAssignment.file_url)}
-                        className="w-full h-[60vh] rounded-lg border border-dark-700"
-                        title={viewAssignment.title}
-                      />
-                    ) : (
+              {/* PDF Content */}
+              <div className="flex-1 overflow-auto bg-dark-700/50 flex justify-center p-4">
+                {viewAssignment.file_url ? (
+                  viewAssignment.file_url.toLowerCase().includes('.pdf') ? (
+                    <>
+                      {pdfLoading && (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <Loader2 className="w-8 h-8 text-primary-500 animate-spin mx-auto mb-2" />
+                            <p className="text-dark-400">Loading PDF...</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {pdfError && (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center p-8">
+                            <FileText className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-white mb-2">Unable to load PDF</h3>
+                            <p className="text-dark-400 mb-4">{pdfError}</p>
+                            <a
+                              href={getFileUrl(viewAssignment.file_url)}
+                              download
+                              className="btn-gradient inline-flex items-center gap-2"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Instead
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      <Document
+                        file={getFileUrl(viewAssignment.file_url)}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        onLoadError={onDocumentLoadError}
+                        loading=""
+                        className={pdfLoading || pdfError ? 'hidden' : ''}
+                      >
+                        <Page
+                          pageNumber={pageNumber}
+                          scale={scale}
+                          renderTextLayer={true}
+                          renderAnnotationLayer={true}
+                          className="shadow-xl"
+                        />
+                      </Document>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
                       <a
                         href={getFileUrl(viewAssignment.file_url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 bg-dark-700/50 rounded-xl p-4 hover:bg-dark-700 transition-colors"
+                        className="flex items-center gap-3 bg-dark-700/50 rounded-xl p-6 hover:bg-dark-700 transition-colors"
                       >
-                        <FileText className="w-8 h-8 text-primary-400" />
-                        <div className="flex-1">
-                          <p className="text-white">View Assignment File</p>
+                        <FileText className="w-10 h-10 text-primary-400" />
+                        <div>
+                          <p className="text-white font-medium">View Assignment File</p>
                           <p className="text-sm text-dark-400">Click to download</p>
                         </div>
-                        <Download className="w-5 h-5 text-dark-400" />
+                        <Download className="w-6 h-6 text-dark-400" />
                       </a>
-                    )}
-                  </div>
-                )}
-
-                {/* No file attached message */}
-                {!viewAssignment.file_url && (
-                  <div className="bg-dark-700/30 rounded-xl p-6 text-center">
-                    <FileText className="w-12 h-12 text-dark-500 mx-auto mb-2" />
-                    <p className="text-dark-400">No file attached to this assignment</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <FileText className="w-16 h-16 text-dark-600 mx-auto mb-4" />
+                      <p className="text-dark-400">No file attached to this assignment</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -313,7 +441,7 @@ export default function StudentAssignments() {
         )}
       </AnimatePresence>
 
-      {/* Submission Modal - For submitting work or viewing submission status */}
+      {/* Submission Modal */}
       <AnimatePresence>
         {submitAssignment && (
           <div 
@@ -340,7 +468,6 @@ export default function StudentAssignments() {
 
               {/* Content */}
               <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                {/* Submission Status */}
                 {(() => {
                   const submission = getSubmissionForAssignment(submitAssignment.id);
                   if (submission) {
@@ -386,7 +513,6 @@ export default function StudentAssignments() {
                     );
                   }
 
-                  // Show submission form if not submitted and not overdue (or late allowed)
                   const canSubmit = !isOverdue(submitAssignment.due_date) || submitAssignment.allow_late_submission;
                   if (canSubmit) {
                     return (

@@ -105,7 +105,7 @@ api_router.include_router(
 api_router.include_router(
     chat.router,
     prefix="/chat",
-    tags=["AI Chat"]
+    tags=["Chat"]
 )
 
 # Admin routes

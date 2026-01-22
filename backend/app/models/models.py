@@ -198,6 +198,7 @@ class Content(Base):
     
     # Content details
     file_url = Column(String(500), nullable=True)  # For notes/videos
+    thumbnail_url = Column(String(500), nullable=True)  # For video thumbnails
     file_size = Column(Integer, nullable=True)  # In bytes
     mime_type = Column(String(100), nullable=True)
     duration = Column(Integer, nullable=True)  # For videos, in seconds
@@ -430,37 +431,29 @@ class GameScore(Base):
 
 # ==================== NOTIFICATION MODEL ====================
 
+class NotificationType(str, enum.Enum):
+    ASSIGNMENT_NEW = "assignment_new"
+    ASSIGNMENT_DUE = "assignment_due"
+    ASSIGNMENT_GRADED = "assignment_graded"
+    CONTENT_NEW = "content_new"
+    ALARM = "alarm"
+    SYSTEM = "system"
+    WELCOME = "welcome"
+
 class Notification(Base):
-    """User notification model."""
     __tablename__ = "notifications"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    
-    title = Column(String(200), nullable=False)
+    type = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
-    notification_type = Column(String(50), nullable=False)  # assignment, announcement, etc.
-    
-    # Reference to related content
-    reference_type = Column(String(50), nullable=True)
-    reference_id = Column(UUID(as_uuid=True), nullable=True)
-    
-    # Status
+    link = Column(String(500), nullable=True)
     is_read = Column(Boolean, default=False)
     read_at = Column(DateTime, nullable=True)
-    
-    # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", back_populates="notifications")
-    
-    __table_args__ = (
-        Index("idx_notification_user", "user_id"),
-        Index("idx_notification_read", "is_read"),
-        Index("idx_notification_created", "created_at"),
-    )
+    user = relationship("User", backref="user_notifications")
 
 
 # ==================== AUDIT LOG MODEL ====================
@@ -537,3 +530,34 @@ class SystemSetting(Base):
     # Timestamps
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+# ==================== EMAIL VERIFICATION TOKEN MODEL ====================
+
+class EmailVerificationToken(Base):
+    """Email verification tokens for user registration."""
+    __tablename__ = "email_verification_tokens"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(255), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    user = relationship("User", backref="verification_tokens")
+
+
+class PasswordResetToken(Base):
+    """Password reset tokens."""
+    __tablename__ = "password_reset_tokens"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(255), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    user = relationship("User", backref="reset_tokens")

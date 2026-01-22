@@ -257,6 +257,7 @@ class VideoCreate(ContentBase):
     """Schema for creating a video."""
     content_type: ContentType = ContentType.VIDEO
     file_url: str
+    thumbnail_url: Optional[str] = None
     duration: Optional[int] = None
 
 
@@ -286,6 +287,7 @@ class ContentResponse(ContentBase, TimestampMixin, BaseSchema):
     """Schema for content response."""
     id: UUID
     file_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
     file_size: Optional[int] = None
     mime_type: Optional[str] = None
     duration: Optional[int] = None
@@ -596,6 +598,7 @@ class FileUploadResponse(BaseModel):
     file_name: str
     file_size: int
     mime_type: str
+    thumbnail_url: Optional[str] = None
 
 
 # ==================== AUDIT LOG SCHEMAS ====================

@@ -158,18 +158,62 @@ async def get_pending_content(
     )
     content_list = result.scalars().all()
     
-    return [
-        {
+    response = []
+    for c in content_list:
+        item = {
             "id": c.id,
             "title": c.title,
-            "content_type": c.content_type.value,
-            "subject": c.subject.name if c.subject else None,
-            "uploader": c.uploader.full_name if c.uploader else None,
+            "content_type": c.content_type.value if c.content_type else None,
+            "status": c.status.value if c.status else "pending",
             "created_at": c.created_at,
         }
-        for c in content_list
-    ]
-
+        
+        # Add optional fields if they exist
+        if hasattr(c, 'description'):
+            item["description"] = c.description
+        if hasattr(c, 'file_url'):
+            item["file_url"] = c.file_url
+        if hasattr(c, 'file_size'):
+            item["file_size"] = c.file_size
+        if hasattr(c, 'mime_type'):
+            item["mime_type"] = c.mime_type
+        if hasattr(c, 'thumbnail_url'):
+            item["thumbnail_url"] = c.thumbnail_url
+        if hasattr(c, 'video_url'):
+            item["video_url"] = c.video_url
+        if hasattr(c, 'duration'):
+            item["duration"] = c.duration
+        if hasattr(c, 'target_classes'):
+            item["target_classes"] = c.target_classes
+        
+        # Assignment specific fields
+        if hasattr(c, 'due_date'):
+            item["due_date"] = c.due_date
+        if hasattr(c, 'max_score'):
+            item["max_score"] = c.max_score
+        if hasattr(c, 'instructions'):
+            item["instructions"] = c.instructions
+        if hasattr(c, 'allow_late_submission'):
+            item["allow_late_submission"] = c.allow_late_submission
+        
+        # Relationships
+        if c.subject:
+            item["subject"] = {"id": str(c.subject.id), "name": c.subject.name}
+        else:
+            item["subject"] = None
+            
+        if c.uploader:
+            item["uploader"] = {
+                "id": str(c.uploader.id),
+                "first_name": c.uploader.first_name,
+                "last_name": c.uploader.last_name or "",
+            }
+        else:
+            item["uploader"] = None
+        
+        response.append(item)
+    
+    return response
 
 @router.get("/audit-logs", response_model=List[AuditLogResponse])
 async def get_audit_logs(
