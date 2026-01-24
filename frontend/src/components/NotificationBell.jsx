@@ -76,10 +76,16 @@ export default function NotificationBell() {
       case 'assignment_graded':
         return <Award className="w-5 h-5 text-yellow-400" />;
       case 'content_new':
+      case 'content_approved':
         return <FileText className="w-5 h-5 text-primary-400" />;
+      case 'content_pending':
+        return <Clock className="w-5 h-5 text-orange-400" />;
+      case 'content_rejected':
+        return <AlertCircle className="w-5 h-5 text-red-400" />;
       case 'alarm':
         return <Clock className="w-5 h-5 text-red-400" />;
       case 'system':
+      case 'welcome':
         return <AlertCircle className="w-5 h-5 text-blue-400" />;
       default:
         return <Bell className="w-5 h-5 text-dark-400" />;
@@ -87,9 +93,21 @@ export default function NotificationBell() {
   };
 
   const formatTime = (dateString) => {
-    const date = new Date(dateString);
+    if (!dateString) return '';
+    
+    // Parse the date - if no timezone info, treat as UTC
+    let date = new Date(dateString);
+    
+    // If the dateString doesn't include 'Z' or timezone offset, append 'Z' to treat as UTC
+    if (!dateString.includes('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+      date = new Date(dateString + 'Z');
+    }
+    
     const now = new Date();
-    const diff = now - date;
+    const diff = now.getTime() - date.getTime();
+    
+    // Handle negative diff (future dates or timezone issues)
+    if (diff < 0) return 'Just now';
     
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);

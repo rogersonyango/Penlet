@@ -165,9 +165,9 @@ export default function StudentChat() {
       <div className="flex-1 overflow-y-auto rounded-2xl bg-dark-800/50 border border-dark-700/50 p-4">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center mb-4">
+            {/*<div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center mb-4">
               <Sparkles className="w-10 h-10 text-primary-400" />
-            </div>
+            </div> */}
             <h2 className="text-xl font-semibold text-white mb-2">How can I help you today?</h2>
             <p className="text-dark-400 mb-6 max-w-md">
               I'm here to help you with your studies. Ask me anything about your subjects!

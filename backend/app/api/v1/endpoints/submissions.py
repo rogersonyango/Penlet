@@ -159,6 +159,8 @@ async def grade_submission(
     db: AsyncSession = Depends(get_db),
 ):
     """Grade a submission (teachers only)."""
+    from app.models.models import Notification
+    
     result = await db.execute(
         select(Submission).options(selectinload(Submission.assignment)).where(Submission.id == submission_id)
     )
@@ -175,6 +177,19 @@ async def grade_submission(
     submission.status = AssignmentStatus.GRADED
     submission.graded_by = current_user.id
     submission.graded_at = datetime.utcnow()
+    
+    # ============ CREATE NOTIFICATION FOR STUDENT ============
+    max_score = submission.assignment.max_score or 100
+    percentage = round((grade_data.score / max_score) * 100, 1)
+    
+    notification = Notification(
+        user_id=submission.student_id,
+        type="assignment_graded",
+        title=f"Assignment Graded: {submission.assignment.title}",
+        message=f"You scored {grade_data.score}/{max_score} ({percentage}%)." + (f" Feedback: {grade_data.feedback}" if grade_data.feedback else ""),
+        link="/student/assignments",
+    )
+    db.add(notification)
     
     await db.commit()
     
