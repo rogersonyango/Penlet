@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 
 export default function AlarmPopup() {
   const [triggeredAlarms, setTriggeredAlarms] = useState([]);
+  const [dismissedAlarms, setDismissedAlarms] = useState([]); // Track alarms user has closed
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef(null);
   const queryClient = useQueryClient();
@@ -15,26 +16,111 @@ export default function AlarmPopup() {
   const { data: alarms = [] } = useQuery({
     queryKey: ['alarms-active'],
     queryFn: () => alarmsAPI.list({ active_only: true }).then(res => res.data),
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 30000,
   });
 
   // Snooze mutation
   const snoozeMutation = useMutation({
     mutationFn: ({ id, minutes }) => alarmsAPI.snooze(id, minutes),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['alarms-active']);
-      queryClient.invalidateQueries(['alarms']);
+    onSuccess: (_, variables) => {
+      // Remove from triggered alarms after successful snooze
+      setTriggeredAlarms(prev => prev.filter(a => a.id !== variables.id));
+      // Remove from dismissed so it can trigger again after snooze
+      setDismissedAlarms(prev => prev.filter(id => id !== variables.id));
+      queryClient.invalidateQueries({ queryKey: ['alarms-active'] });
+      queryClient.invalidateQueries({ queryKey: ['alarms'] });
+      toast.success(`Alarm snoozed for ${variables.minutes} minutes`);
+      
+      // Stop sound
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    },
+    onError: (err) => {
+      console.error('Snooze error:', err);
+      toast.error('Failed to snooze alarm');
     },
   });
 
   // Dismiss mutation
   const dismissMutation = useMutation({
     mutationFn: (id) => alarmsAPI.dismiss(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['alarms-active']);
-      queryClient.invalidateQueries(['alarms']);
+    onSuccess: (_, alarmId) => {
+      // Remove from triggered alarms after successful dismiss
+      setTriggeredAlarms(prev => prev.filter(a => a.id !== alarmId));
+      queryClient.invalidateQueries({ queryKey: ['alarms-active'] });
+      queryClient.invalidateQueries({ queryKey: ['alarms'] });
+      toast.success('Alarm dismissed');
+      
+      // Stop sound
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    },
+    onError: (err) => {
+      console.error('Dismiss error:', err);
+      toast.error('Failed to dismiss alarm');
     },
   });
+
+  // Handle mute toggle
+  const handleMuteToggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    
+    if (audioRef.current) {
+      if (newMuted) {
+        audioRef.current.pause();
+      } else if (triggeredAlarms.length > 0) {
+        audioRef.current.play().catch(() => {});
+      }
+    }
+    
+    toast.success(newMuted ? 'Alarm muted' : 'Alarm unmuted');
+  };
+
+  // Handle close (just hide popup, don't dismiss alarm)
+  const handleClose = (e, alarmId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Stop sound first
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    
+    // Add to dismissed list so it won't re-trigger
+    setDismissedAlarms(prev => [...prev, alarmId]);
+    
+    // Remove from triggered alarms
+    setTriggeredAlarms(prev => prev.filter(a => a.id !== alarmId));
+    
+    toast.success('Alarm popup closed');
+  };
+
+  // Handle snooze
+  const handleSnooze = (e, alarm, minutes) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Just trigger the mutation - onSuccess will handle the rest
+    snoozeMutation.mutate({ id: alarm.id, minutes });
+  };
+
+  // Handle dismiss
+  const handleDismiss = (e, alarm) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Just trigger the mutation - onSuccess will handle the rest
+    dismissMutation.mutate(alarm.id);
+  };
 
   // Check for triggered alarms
   useEffect(() => {
@@ -43,6 +129,9 @@ export default function AlarmPopup() {
       
       alarms.forEach(alarm => {
         if (!alarm.is_active) return;
+        
+        // Skip if user already dismissed/closed this alarm
+        if (dismissedAlarms.includes(alarm.id)) return;
         
         // Skip if snoozed
         if (alarm.is_snoozed && alarm.snooze_until) {
@@ -71,12 +160,11 @@ export default function AlarmPopup() {
       });
     };
 
-    // Check immediately and then every 10 seconds
     checkAlarms();
     const interval = setInterval(checkAlarms, 10000);
     
     return () => clearInterval(interval);
-  }, [alarms, triggeredAlarms, isMuted]);
+  }, [alarms, triggeredAlarms, dismissedAlarms, isMuted]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -101,46 +189,11 @@ export default function AlarmPopup() {
     }
   };
 
-  const handleSnooze = (alarm, minutes) => {
-    snoozeMutation.mutate({ id: alarm.id, minutes });
-    setTriggeredAlarms(prev => prev.filter(a => a.id !== alarm.id));
-    toast.success(`Alarm snoozed for ${minutes} minutes`);
-    
-    // Stop sound
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  };
-
-  const handleDismiss = (alarm) => {
-    dismissMutation.mutate(alarm.id);
-    setTriggeredAlarms(prev => prev.filter(a => a.id !== alarm.id));
-    toast.success('Alarm dismissed');
-    
-    // Stop sound
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  };
-
-  const handleClose = (alarmId) => {
-    setTriggeredAlarms(prev => prev.filter(a => a.id !== alarmId));
-    
-    // Stop sound if no more alarms
-    if (triggeredAlarms.length <= 1 && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  };
-
   return (
     <>
       {/* Alarm Sound */}
       <audio ref={audioRef} loop>
         <source src="/alarm-sound.mp3" type="audio/mpeg" />
-        {/* Fallback: Use Web Audio API beep */}
       </audio>
 
       {/* Triggered Alarms Popup */}
@@ -169,19 +222,25 @@ export default function AlarmPopup() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {/* Mute Button */}
                     <button
-                      onClick={() => setIsMuted(!isMuted)}
-                      className="p-2 text-white/80 hover:text-white transition-colors"
+                      type="button"
+                      onClick={handleMuteToggle}
+                      className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                      title={isMuted ? 'Unmute' : 'Mute'}
                     >
                       {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </button>
-                    <button
-                      onClick={() => handleClose(alarm.id)}
-                      className="p-2 text-white/80 hover:text-white transition-colors"
+                    {/* Close Button */}
+                    {/* <button
+                      type="button"
+                      onClick={(e) => handleClose(e, alarm.id)}
+                      className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                      title="Close popup (alarm will still ring)"
                     >
                       <X className="w-5 h-5" />
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </div>
@@ -199,7 +258,8 @@ export default function AlarmPopup() {
                     {[5, 10, 15, 30].map((mins) => (
                       <button
                         key={mins}
-                        onClick={() => handleSnooze(alarm, mins)}
+                        type="button"
+                        onClick={(e) => handleSnooze(e, alarm, mins)}
                         className="flex-1 py-2 px-3 bg-dark-700 hover:bg-dark-600 text-dark-300 hover:text-white rounded-lg text-sm transition-colors"
                       >
                         {mins}m
@@ -208,12 +268,13 @@ export default function AlarmPopup() {
                   </div>
                 </div>
 
-                {/* Dismiss Button */}
+                {/* Close Button */}
                 <button
-                  onClick={() => handleDismiss(alarm)}
-                  className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl transition-colors"
+                  type="button"
+                  onClick={(e) => handleClose(e, alarm.id)}
+                  className="w-full py-3 bg-dark-600 hover:bg-dark-500 text-white font-medium rounded-xl transition-colors"
                 >
-                  Dismiss Alarm
+                  Close
                 </button>
               </div>
             </div>
