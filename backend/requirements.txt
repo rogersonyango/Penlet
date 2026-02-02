@@ -46,3 +46,5 @@ mypy>=1.13.0
 
 # Production (Linux only)
 gunicorn>=23.0.0; sys_platform != 'win32'
+
+anthropic
