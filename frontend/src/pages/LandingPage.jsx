@@ -4,18 +4,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, Users, GraduationCap, Play, Brain, Calendar,
   CheckCircle, ArrowRight, Sparkles, Shield, Zap,
-  MessageCircle, X, Send, Loader2
+  MessageCircle, X, Send, Loader2, Gamepad, TrendingUp, Video,
+  Presentation
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 
+
 const features = [
   { icon: BookOpen, title: 'Digital Notes', desc: 'Access PDF notes organized by subject, anytime' },
-  { icon: Play, title: 'Educational Videos', desc: 'Watch curriculum-aligned video lessons' },
+  { icon: Video, title: 'Educational Videos', desc: 'Watch curriculum-aligned video lessons' },
   { icon: Brain, title: 'AI Study Assistant', desc: 'Get help from our intelligent chatbot' },
   { icon: Calendar, title: 'Smart Timetable', desc: 'Organize your study schedule effectively' },
-  { icon: Sparkles, title: 'Learning Games', desc: 'Make studying fun with educational games' },
-  { icon: Shield, title: 'Progress Tracking', desc: 'Monitor your academic performance' },
+  { icon: Gamepad, title: 'Learning Games', desc: 'Make studying fun with educational games' },
+  { icon: TrendingUp, title: 'Progress Tracking', desc: 'Monitor your academic performance' },
 ];
 
 const stats = [
@@ -41,15 +43,8 @@ export default function LandingPage() {
 
   const onSubmitContact = async (data) => {
     setIsSubmitting(true);
-    
-    // Simulate sending the inquiry (replace with actual API call when email service is set up)
     try {
-      // In production, this would send to your backend which would email the inquiry
-      // await api.post('/contact', data);
-      
-      // For now, we'll just simulate a delay and show success
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       console.log('Contact form submission:', data);
       toast.success('Your inquiry has been sent! We\'ll get back to you soon.');
       reset();
@@ -57,7 +52,6 @@ export default function LandingPage() {
     } catch (error) {
       toast.error('Failed to send inquiry. Please try again.');
     }
-    
     setIsSubmitting(false);
   };
 
@@ -68,8 +62,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">P</span>
+              <div className="w-12 h-12 rounded-xl bg-transparent flex items-center justify-center">
+                <img src="/logo.png" alt="Penlet" />
               </div>
               <span className="text-xl font-bold text-white">Penlet</span>
             </Link>
@@ -85,59 +79,73 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4">
-        <div className="absolute inset-0 bg-gradient-glow opacity-50" />
-        <div className="max-w-7xl mx-auto relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center max-w-4xl mx-auto"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 mb-6">
-              <Zap className="w-4 h-4 text-primary-400" />
-              <span className="text-sm text-primary-300">Uganda's Modern Education Platform</span>
-            </div>
-            
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-              <span className="text-white">Transform Your</span>
-              <br />
-              <span className="text-gradient">Learning Journey</span>
-            </h1>
-            
-            <p className="text-lg sm:text-xl text-dark-300 mb-8 max-w-2xl mx-auto">
-              A comprehensive educational platform designed for Uganda's Senior 1-6 curriculum. 
-              Access notes, videos, assignments, and interactive learning tools.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/register" className="btn-gradient flex items-center gap-2 w-full sm:w-auto justify-center">
-                <GraduationCap className="w-5 h-5" />
-                Start Learning
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link to="/login" className="btn-secondary flex items-center gap-2 w-full sm:w-auto justify-center">
-                <Users className="w-5 h-5" />
-                I'm a Teacher
-              </Link>
-            </div>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16"
-          >
-            {stats.map((stat, i) => (
-              <div key={i} className="glass-card p-6 text-center">
-                <div className="text-3xl font-bold text-gradient mb-1">{stat.value}</div>
-                <div className="text-sm text-dark-400">{stat.label}</div>
+      {/* Hero Section with Background Image */}
+      <section className="relative pt-16 min-h-screen flex items-center">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/images/hero-bg.jpg" 
+            alt="Students learning" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-900/90 via-gray-900/70 to-gray-900/50" />
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-6">
+                <Zap className="w-4 h-4 text-primary-400" />
+                <span className="text-sm text-white font-medium">Uganda's Modern Education Platform</span>
               </div>
-            ))}
-          </motion.div>
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">Transform Your</span>
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">Learning Journey</span>
+              </h1>
+              
+              <p className="text-lg sm:text-xl text-gray-300 mb-8 max-w-xl">
+                A comprehensive educational platform designed for Uganda's Senior 1-6 curriculum. 
+                Access notes, videos, assignments, and interactive learning tools.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link to="/register" className="btn-gradient flex items-center gap-2 justify-center">
+                  <GraduationCap className="w-5 h-5" />
+                  Start Learning
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                {/*
+                <Link to="/login" className="px-6 py-3 bg-white/10 backdrop-blur border border-white/20 text-white rounded-xl font-medium hover:bg-white/20 transition-colors flex items-center gap-2 justify-center">
+                  <Users className="w-5 h-5" />
+                  I'm a teacher
+                </Link>
+                */}
+              </div>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-4 gap-4 mt-12">
+                {stats.map((stat, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + i * 0.1 }}
+                    className="text-center"
+                  >
+                    <div className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</div>
+                    <div className="text-xs sm:text-sm text-gray-400">{stat.label}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -179,6 +187,67 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* About/Showcase Section with Image */}
+      <section className="py-20 px-4 bg-dark-800/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Image Side */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-xl">
+                <img 
+                  src="/images/students-learning.jpg" 
+                  alt="Students learning together" 
+                  className="w-full h-[400px] object-cover"
+                />
+              </div>
+              {/* Decorative Element */}
+              <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl -z-10" />
+              <div className="absolute -top-4 -left-4 w-16 h-16 bg-accent-200 rounded-xl -z-10" />
+            </motion.div>
+
+            {/* Content Side */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex text-primary-600 text-sm font-medium mb-4">
+                <Sparkles className="w-4 h-4" />
+                Why Choose Penlet
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
+                Empowering Uganda's Next Generation
+              </h2>
+              <p className="text-dark-400 mb-6">
+                Penlet is designed specifically for Uganda's education system, covering Senior 1 through Senior 6 
+                curriculum. Our platform bridges the gap between traditional classroom learning and modern 
+                digital education.
+              </p>
+              <ul className="space-y-4">
+                {[
+                  'Aligned with Uganda National Curriculum',
+                  'Accessible on any device, anywhere',
+                  'Interactive learning experiences',
+                  'Real-time progress tracking',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-4 h-4 text-primary-600" />
+                    </div>
+                    <span className="text-dark-400">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* Roles Section */}
       <section className="py-20 px-4 bg-dark-800/30">
         <div className="max-w-7xl mx-auto">
@@ -199,19 +268,25 @@ export default function LandingPage() {
               {
                 icon: GraduationCap,
                 title: 'Students',
-                color: 'primary',
+                image: '/images/student-role.jpg',
+                bgColor: 'bg-gradient-to-br from-primary-500/20 to-accent-500/20 border-b border-white/5',
+                textColor: 'text-primary-600',
                 features: ['Access notes & videos', 'Submit assignments', 'Play learning games', 'Track progress'],
               },
               {
-                icon: Users,
+                icon: Presentation,
                 title: 'Teachers',
-                color: 'accent',
+                image: '/images/teacher-role.jpg',
+                bgColor: 'bg-gradient-to-br from-primary-500/20 to-accent-500/20 border-b border-white/5',
+                textColor: 'text-accent-600',
                 features: ['Upload content', 'Create assignments', 'Grade submissions', 'Monitor students'],
               },
               {
                 icon: Shield,
                 title: 'Administrators',
-                color: 'highlight',
+                image: '/images/admin-role.jpg',
+                bgColor: 'bg-gradient-to-br from-primary-500/20 to-accent-500/20 border-b border-white/5',
+                textColor: 'text-amber-600',
                 features: ['Manage users', 'Approve content', 'View analytics', 'System settings'],
               },
             ].map((role, i) => (
@@ -221,42 +296,81 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.2 }}
-                className="glass-card p-8"
+                className="bg-dark-800/30 rounded-2xl overflow-hidden shadow-lg border-b border-white/5 hover:shadow-xl transition-shadow"
               >
-                <div className={`w-16 h-16 rounded-2xl bg-${role.color}-500/20 flex items-center justify-center mb-6`}>
-                  <role.icon className={`w-8 h-8 text-${role.color}-400`} />
+                {/* Role Image */}
+                <div className="h-48 overflow-hidden">
+                  <img 
+                    src={role.image} 
+                    alt={role.title}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-4">{role.title}</h3>
-                <ul className="space-y-3">
-                  {role.features.map((feature, j) => (
-                    <li key={j} className="flex items-center gap-3 text-dark-300">
-                      <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                <div className="p-6">
+                  <div className={`w-12 h-12 rounded-xl ${role.bgColor} flex items-center justify-center mb-4 -mt-12 relative z-10 border-4 border-white shadow`}>
+                    <role.icon className={`w-6 h-6 ${role.textColor}`} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-4">{role.title}</h3>
+                  <ul className="space-y-2">
+                    {role.features.map((feature, j) => (
+                      <li key={j} className="flex items-center gap-2 text-dark-400 text-sm">
+                        <CheckCircle className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Testimonial/Quote Section */}
+      <section className="py-20 px-4 bg-dark-800/30">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mx-auto mb-6">
+              <span className="text-3xl text-white">"</span>
+            </div>
+            <blockquote className="text-2xl sm:text-3xl font-medium text-white mb-6">
+              Education is the most powerful weapon which you can use to change the world.
+            </blockquote>
+            <cite className="text-dark-400">— Nelson Mandela</cite>
+          </motion.div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="py-20 px-4 relative overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/images/cta-bg.jpg" 
+            alt="Background" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-600/80 to-accent-600/80" />
+        </div>
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="glass-card p-12"
           >
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Ready to Start Learning?
             </h2>
-            <p className="text-dark-400 mb-8 max-w-xl mx-auto">
+            <p className="text-white/80 mb-8 max-w-xl mx-auto">
               Join thousands of students across Uganda who are already using Penlet to excel in their studies.
             </p>
-            <Link to="/register" className="btn-gradient inline-flex items-center gap-2">
+            <Link to="/register" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors shadow-lg">
               Create Free Account
               <ArrowRight className="w-4 h-4" />
             </Link>
@@ -269,10 +383,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                <span className="text-white font-bold">P</span>
+              <div className="w-8 h-8 rounded-lg bg-transparent flex items-center justify-center">
+                <img src="/logo.png" alt="Penlet" />
               </div>
-              <span className="text-white font-semibold">Penlet</span>
             </div>
             <p className="text-dark-500 text-sm">
               © 2024 Penlet. Built for Uganda's Education System.
