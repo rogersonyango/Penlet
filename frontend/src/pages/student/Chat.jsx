@@ -168,8 +168,8 @@ export default function StudentChat() {
             {/*<div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center mb-4">
               <Sparkles className="w-10 h-10 text-primary-400" />
             </div> */}
-            <h2 className="text-xl font-semibold text-white mb-2">How can I help you today?</h2>
-            <p className="text-dark-400 mb-6 max-w-md">
+            <h2 className="text-xl font-semibold text-white mb-2"></h2>
+            <p className="text-white font-semibold mb-2 max-w-md">
               I'm here to help you with your studies. Ask me anything about your subjects!
             </p>
             
