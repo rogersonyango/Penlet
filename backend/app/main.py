@@ -5,7 +5,6 @@ Main FastAPI Application Entry Point
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
@@ -14,8 +13,6 @@ import time
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import api_router
-from app.middleware.rate_limiter import RateLimitMiddleware
-from app.middleware.security import SecurityHeadersMiddleware
 from app.utils.logger import setup_logging
 
 # Setup logging
@@ -62,26 +59,7 @@ origins = [
     "https://penlet-frontend.onrender.com",
 ]
 
-# ============================================================
-# MIDDLEWARE ORDER MATTERS!
-# Middlewares are executed in REVERSE order of addition.
-# So we add CORS LAST so it executes FIRST.
-# ============================================================
-
-# 1. Trusted Host Middleware (executes last, if enabled)
-if settings.ENVIRONMENT == "production":
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=settings.ALLOWED_HOSTS,
-    )
-
-# 2. Rate Limiting Middleware
-# app.add_middleware(RateLimitMiddleware)  # Temporarily disabled
-
-# 3. Security Headers Middleware  
-# app.add_middleware(SecurityHeadersMiddleware)  # Temporarily disabled
-
-# 4. CORS Middleware - MUST BE ADDED LAST (so it executes FIRST)
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
