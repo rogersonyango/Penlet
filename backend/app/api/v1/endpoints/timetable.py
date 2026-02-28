@@ -62,8 +62,14 @@ async def create_timetable_entry(
     )
     db.add(new_entry)
     await db.commit()
-    await db.refresh(new_entry)
-    return new_entry
+    
+    # Reload with subject relationship
+    result = await db.execute(
+        select(TimetableEntry)
+        .options(selectinload(TimetableEntry.subject))
+        .where(TimetableEntry.id == new_entry.id)
+    )
+    return result.scalar_one()
 
 
 @router.get("/{entry_id}", response_model=TimetableEntryResponse)
@@ -106,8 +112,14 @@ async def update_timetable_entry(
         setattr(entry, field, value)
     
     await db.commit()
-    await db.refresh(entry)
-    return entry
+    
+    # Reload with subject relationship
+    result = await db.execute(
+        select(TimetableEntry)
+        .options(selectinload(TimetableEntry.subject))
+        .where(TimetableEntry.id == entry_id)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/{entry_id}")

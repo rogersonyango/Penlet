@@ -62,13 +62,18 @@ app.add_middleware(RateLimitMiddleware)
 # CORS Middleware
 from fastapi.middleware.cors import CORSMiddleware
 
+origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://penlet-frontend.onrender.com",  # Add your Render frontend URL
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 # Trusted Host Middleware
