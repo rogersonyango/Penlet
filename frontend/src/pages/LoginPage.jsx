@@ -41,13 +41,13 @@ export default function LoginPage() {
       <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
         Welcome Back
       </h2>
-      <p className="text-dark-400 mb-8">
+      <p className="text-dark-300 mb-8">
         Sign in to continue your learning journey
       </p>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="form-group">
-          <label className="form-label">Username or Email</label>
+          <label className="form-label text-dark-200">Username or Email</label>
           <input
             type="text"
             {...register('username')}
@@ -56,12 +56,12 @@ export default function LoginPage() {
             autoComplete="username"
           />
           {errors.username && (
-            <p className="form-error">{errors.username.message}</p>
+            <p className="form-error text-red-400">{errors.username.message}</p>
           )}
         </div>
         
         <div className="form-group">
-          <label className="form-label">Password</label>
+          <label className="form-label text-dark-200">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -79,7 +79,7 @@ export default function LoginPage() {
             </button>
           </div>
           {errors.password && (
-            <p className="form-error">{errors.password.message}</p>
+            <p className="form-error text-red-400">{errors.password.message}</p>
           )}
         </div>
         
@@ -110,13 +110,13 @@ export default function LoginPage() {
       </form>
       
       <div className="mt-8 text-center">
-        <p className="text-dark-400">
+        <p className="text-dark-300">
           Don't have an account?{' '}
           <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">
             Sign up
           </Link>
         </p>
       </div>
-</div>
+    </div>
   );
 }

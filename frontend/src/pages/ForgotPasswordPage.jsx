@@ -1,4 +1,3 @@
-// ForgotPasswordPage.jsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -32,20 +31,20 @@ export default function ForgotPasswordPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="bg-dark-900">
+        <div className="bg-dark-800 rounded-2xl shadow-lg border border-dark-700 p-8">
           {!isSubmitted ? (
             <>
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-primary-600" />
+                <div className="w-16 h-16 rounded-full bg-primary-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-primary-500" />
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-2">Forgot Password?</h1>
-                <p className="text-dark-400">Enter your email and we'll send you a reset link</p>
+                <p className="text-dark-300">Enter your email and we'll send you a reset link</p>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">Email Address</label>
+                  <label className="block text-sm font-medium text-dark-200 mb-2">Email Address</label>
                   <input
                     type="email"
                     {...register('email', { 
@@ -58,7 +57,7 @@ export default function ForgotPasswordPage() {
                     className="input-field"
                     placeholder="Enter your email"
                   />
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+                  {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>}
                 </div>
 
                 <button
@@ -75,7 +74,7 @@ export default function ForgotPasswordPage() {
               </form>
 
               <div className="mt-6 text-center">
-                <Link to="/login" className="text-primary-600 hover:text-primary-700 text-sm flex items-center justify-center gap-1">
+                <Link to="/login" className="text-primary-400 hover:text-primary-300 text-sm flex items-center justify-center gap-1">
                   <ArrowLeft className="w-4 h-4" />
                   Back to Login
                 </Link>
@@ -83,11 +82,11 @@ export default function ForgotPasswordPage() {
             </>
           ) : (
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
               <h1 className="text-2xl font-bold text-white mb-2">Check Your Email</h1>
-              <p className="text-dark-400 mb-6">
+              <p className="text-dark-300 mb-6">
                 If an account exists with that email, we've sent a password reset link.
               </p>
               <Link to="/login" className="btn-gradient inline-block">
