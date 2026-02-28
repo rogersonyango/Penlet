@@ -59,12 +59,12 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center max-w-md">
+        <div className="bg-dark-900 rounded-2xl shadow-lg border border-dark-900 p-8 text-center max-w-md">
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Link</h1>
-          <p className="text-gray-500 mb-6">This password reset link is invalid or has expired.</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Invalid Link</h1>
+          <p className="text-dark-300 mb-6">This password reset link is invalid or has expired.</p>
           <Link to="/forgot-password" className="btn-gradient inline-block">
             Request New Link
           </Link>
@@ -87,14 +87,14 @@ export default function ResetPasswordPage() {
                 <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
                   <Lock className="w-8 h-8 text-primary-600" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h1>
-                <p className="text-gray-500">Enter your new password below</p>
+                <h1 className="text-2xl font-bold text-white mb-2">Reset Password</h1>
+                <p className="text-dark-400">Enter your new password below</p>
               </div>
 
               {/* Password Requirements Info */}
               <div className="mb-6 p-4 bg-dark-900">
-                <p className="text-sm font-medium text-gray-700 mb-2">Password must contain:</p>
-                <ul className="text-sm text-gray-600 space-y-1">
+                <p className="text-sm font-medium text-dark-300 mb-2">Password must contain:</p>
+                <ul className="text-sm text-dark-400 space-y-1">
                   <li className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
                     At least 8 characters
@@ -137,7 +137,7 @@ export default function ResetPasswordPage() {
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">New Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -160,7 +160,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">Confirm Password</label>
                   <div className="relative">
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
@@ -202,9 +202,9 @@ export default function ResetPasswordPage() {
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Password Reset!</h1>
-              <p className="text-gray-500 mb-6">Your password has been successfully reset.</p>
-              <p className="text-sm text-gray-400 mb-4">Redirecting to login...</p>
+              <h1 className="text-2xl font-bold text-white mb-2">Password Reset!</h1>
+              <p className="text-dark-300 mb-6">Your password has been successfully reset.</p>
+              <p className="text-sm text-dark-300 mb-4">Redirecting to login...</p>
               <Link to="/login" className="btn-gradient inline-block">
                 Go to Login
               </Link>
@@ -216,8 +216,8 @@ export default function ResetPasswordPage() {
               <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <XCircle className="w-8 h-8 text-red-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset Failed</h1>
-              <p className="text-gray-500 mb-6">The reset link may be invalid or expired.</p>
+              <h1 className="text-2xl font-bold text-white mb-2">Reset Failed</h1>
+              <p className="text-dark-300 mb-6">The reset link may be invalid or expired.</p>
               <Link to="/forgot-password" className="btn-gradient inline-block">
                 Request New Link
               </Link>

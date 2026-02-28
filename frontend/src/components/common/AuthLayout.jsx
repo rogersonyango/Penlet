@@ -1,6 +1,7 @@
 import { Outlet, Link, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../context/authStore';
 import { motion } from 'framer-motion';
+import {Users} from 'lucide-react'
 
 export default function AuthLayout() {
   const { isAuthenticated } = useAuthStore();
@@ -29,7 +30,7 @@ export default function AuthLayout() {
           >
             <Link to="/" className="flex items-center gap-3 mb-8">
               <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">P</span>
+                <img src="/logo.png" alt="Penlet" />
               </div>
               <span className="text-3xl font-bold text-white">Penlet</span>
             </Link>
@@ -45,15 +46,8 @@ export default function AuthLayout() {
             </p>
             
             <div className="flex items-center gap-4">
-              <div className="flex -space-x-3">
-                {[...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-white text-sm font-medium"
-                  >
-                    {String.fromCharCode(65 + i)}
-                  </div>
-                ))}
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 border-2 border-white/30 text-white">
+                <Users size={20} strokeWidth={2} />
               </div>
               <p className="text-white/80 text-sm">
                 <span className="font-semibold text-white">10,000+</span> students already learning
@@ -74,8 +68,8 @@ export default function AuthLayout() {
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link to="/" className="inline-flex items-center gap-2">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">P</span>
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                <img src="/logo.png" alt="Penlet" />
               </div>
               <span className="text-2xl font-bold text-white">Penlet</span>
             </Link>

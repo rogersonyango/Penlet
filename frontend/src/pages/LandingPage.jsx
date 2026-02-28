@@ -9,7 +9,12 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import emailjs from '@emailjs/browser';
 
+// EmailJS Configuration (from environment variables)
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 const features = [
   { icon: BookOpen, title: 'Digital Notes', desc: 'Access PDF notes organized by subject, anytime' },
@@ -44,12 +49,29 @@ export default function LandingPage() {
   const onSubmitContact = async (data) => {
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Contact form submission:', data);
+      // Prepare template parameters
+      const templateParams = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone || 'Not provided',
+        user_type: userTypes.find(t => t.value === data.userType)?.label || data.userType,
+        subject: data.subject,
+        message: data.message,
+      };
+
+      // Send email via EmailJS
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      );
+
       toast.success('Your inquiry has been sent! We\'ll get back to you soon.');
       reset();
       setShowContactForm(false);
     } catch (error) {
+      console.error('EmailJS error:', error);
       toast.error('Failed to send inquiry. Please try again.');
     }
     setIsSubmitting(false);

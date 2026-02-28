@@ -39,13 +39,13 @@ export default function ForgotPasswordPage() {
                 <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-8 h-8 text-primary-600" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
-                <p className="text-gray-500">Enter your email and we'll send you a reset link</p>
+                <h1 className="text-2xl font-bold text-white mb-2">Forgot Password?</h1>
+                <p className="text-dark-400">Enter your email and we'll send you a reset link</p>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                  <label className="block text-sm font-medium text-dark-300 mb-2">Email Address</label>
                   <input
                     type="email"
                     {...register('email', { 
@@ -86,8 +86,8 @@ export default function ForgotPasswordPage() {
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h1>
-              <p className="text-gray-500 mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">Check Your Email</h1>
+              <p className="text-dark-400 mb-6">
                 If an account exists with that email, we've sent a password reset link.
               </p>
               <Link to="/login" className="btn-gradient inline-block">

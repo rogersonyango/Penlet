@@ -42,7 +42,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://penlet:penlet123@db:5432/penlet_db
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-change-this-in-production}
+      SECRET_KEY: ${SECRET_KEY:-import.meta.env.SECRET_KEY}
       ENVIRONMENT: production
       DEBUG: "false"
     ports:
