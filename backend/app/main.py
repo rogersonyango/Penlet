@@ -13,6 +13,8 @@ import time
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import api_router
+from app.middleware.rate_limiter import RateLimitMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 from app.utils.logger import setup_logging
 
 # Setup logging
@@ -59,7 +61,19 @@ origins = [
     "https://penlet-frontend.onrender.com",
 ]
 
-# CORS Middleware
+# ============================================================
+# MIDDLEWARE ORDER MATTERS!
+# Middlewares execute in REVERSE order of addition.
+# Add CORS LAST so it executes FIRST.
+# ============================================================
+
+# 1. Security Headers (executes third)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. Rate Limiting (executes second)
+app.add_middleware(RateLimitMiddleware)
+
+# 3. CORS - MUST BE ADDED LAST (executes first)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
