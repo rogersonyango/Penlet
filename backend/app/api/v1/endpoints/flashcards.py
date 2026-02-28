@@ -55,8 +55,14 @@ async def create_flashcard(
     )
     db.add(new_flashcard)
     await db.commit()
-    await db.refresh(new_flashcard)
-    return new_flashcard
+    
+    # Reload with subject relationship
+    result = await db.execute(
+        select(Flashcard)
+        .options(selectinload(Flashcard.subject))
+        .where(Flashcard.id == new_flashcard.id)
+    )
+    return result.scalar_one()
 
 
 @router.get("/{flashcard_id}", response_model=FlashcardResponse)
@@ -99,8 +105,14 @@ async def update_flashcard(
         setattr(flashcard, field, value)
     
     await db.commit()
-    await db.refresh(flashcard)
-    return flashcard
+    
+    # Reload with subject relationship
+    result = await db.execute(
+        select(Flashcard)
+        .options(selectinload(Flashcard.subject))
+        .where(Flashcard.id == flashcard_id)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/{flashcard_id}")
@@ -148,8 +160,14 @@ async def review_flashcard(
     
     flashcard.last_reviewed = datetime.utcnow()
     await db.commit()
-    await db.refresh(flashcard)
-    return flashcard
+    
+    # Reload with subject relationship
+    result = await db.execute(
+        select(Flashcard)
+        .options(selectinload(Flashcard.subject))
+        .where(Flashcard.id == flashcard_id)
+    )
+    return result.scalar_one()
 
 
 @router.get("/study/session")
@@ -162,7 +180,7 @@ async def get_study_session(
     """Get flashcards for a study session, prioritizing ones that need review."""
     from sqlalchemy import func
     
-    query = select(Flashcard).where(Flashcard.creator_id == current_user.id)
+    query = select(Flashcard).options(selectinload(Flashcard.subject)).where(Flashcard.creator_id == current_user.id)
     
     if subject_id:
         query = query.where(Flashcard.subject_id == subject_id)

@@ -51,8 +51,8 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-900">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center animate-pulse">
-          <span className="text-white font-bold text-2xl">P</span>
+        <div className="w-20 h-20 rounded-2xl bg-transparent flex items-center justify-center animate-pulse">
+          <img src="/logo.png" alt="Penlet" />
         </div>
         <div className="w-8 h-8 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin" />
       </div>
