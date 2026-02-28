@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './context/authStore';
 
@@ -45,11 +46,30 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
+// Loading component
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-dark-900">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center animate-pulse">
+          <span className="text-white font-bold text-2xl">P</span>
+        </div>
+        <div className="w-8 h-8 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin" />
+      </div>
+    </div>
+  );
+}
+
 // Protected Route wrapper
 function ProtectedRoute({ children, allowedRoles }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isInitialized } = useAuthStore();
   
-  if (!isAuthenticated) {
+  // Show loading while auth is initializing
+  if (!isInitialized) {
+    return <LoadingScreen />;
+  }
+  
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
   
@@ -64,7 +84,11 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 // Role-based redirect
 function RoleRedirect() {
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
+  
+  if (!isInitialized) {
+    return <LoadingScreen />;
+  }
   
   if (!user) return <Navigate to="/login" replace />;
   
@@ -83,6 +107,18 @@ function RoleRedirect() {
 }
 
 export default function App() {
+  const { initialize, isInitialized } = useAuthStore();
+  
+  // Initialize auth on app startup
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+  
+  // Show loading screen while initializing
+  if (!isInitialized) {
+    return <LoadingScreen />;
+  }
+  
   return (
     <Routes>
       {/* Public Routes */}

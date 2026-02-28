@@ -140,8 +140,8 @@ export default function DashboardLayout({ role }) {
           {/* Logo */}
           <div className="flex items-center justify-between p-4 border-b border-dark-700">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">P</span>
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                <img src="/logo.png" alt="Penlet" />
               </div>
               <span className="text-xl font-bold text-white">Penlet</span>
             </div>

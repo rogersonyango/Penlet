@@ -8,17 +8,13 @@ const getErrorMessage = (error) => {
   if (!detail) return 'An error occurred';
   if (typeof detail === 'string') return detail;
   if (typeof detail === 'object') {
-    // Handle validation errors with password_errors or other fields
     if (detail.password_errors && Array.isArray(detail.password_errors)) {
       return detail.password_errors.join(', ');
     }
-    // Handle array of validation errors
     if (Array.isArray(detail)) {
       return detail.map(e => e.msg || e.message || String(e)).join(', ');
     }
-    // Handle object with msg field
     if (detail.msg) return detail.msg;
-    // Fallback: stringify the object
     return JSON.stringify(detail);
   }
   return String(detail);
@@ -32,7 +28,39 @@ export const useAuthStore = create(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitialized: false, // Track if auth has been initialized
       error: null,
+
+      // Initialize auth - call this on app startup
+      initialize: async () => {
+        const { accessToken, isInitialized } = get();
+        
+        // Skip if already initialized
+        if (isInitialized) return;
+        
+        // If we have a token, verify it's still valid
+        if (accessToken) {
+          try {
+            const userResponse = await api.get('/auth/me');
+            set({ 
+              user: userResponse.data, 
+              isAuthenticated: true,
+              isInitialized: true 
+            });
+          } catch (error) {
+            // Token is invalid, clear auth state
+            set({
+              user: null,
+              accessToken: null,
+              refreshToken: null,
+              isAuthenticated: false,
+              isInitialized: true,
+            });
+          }
+        } else {
+          set({ isInitialized: true });
+        }
+      },
 
       // Login action
       login: async (username, password) => {
@@ -41,18 +69,24 @@ export const useAuthStore = create(
           const response = await api.post('/auth/login', { username, password });
           const { access_token, refresh_token } = response.data;
           
-          // Set tokens
+          // Set tokens first
           set({ 
             accessToken: access_token, 
             refreshToken: refresh_token,
-            isAuthenticated: true 
           });
           
           // Fetch user info
           const userResponse = await api.get('/auth/me');
-          set({ user: userResponse.data, isLoading: false });
           
-          return { success: true };
+          // Set everything at once to avoid race conditions
+          set({ 
+            user: userResponse.data, 
+            isAuthenticated: true,
+            isInitialized: true,
+            isLoading: false 
+          });
+          
+          return { success: true, user: userResponse.data };
         } catch (error) {
           const message = getErrorMessage(error);
           set({ error: message, isLoading: false });
