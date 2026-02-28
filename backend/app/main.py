@@ -5,7 +5,6 @@ Main FastAPI Application Entry Point
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
@@ -50,7 +49,7 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
     lifespan=lifespan,
-    redirect_slashes=False,  # Prevent 307 redirects that drop auth headers
+    redirect_slashes=False,
 )
 
 # CORS Origins
@@ -62,28 +61,27 @@ origins = [
     "https://penlet-frontend.onrender.com",
 ]
 
-# CORS Middleware - MUST be added FIRST (before other middlewares)
+# ============================================================
+# MIDDLEWARE ORDER MATTERS!
+# Middlewares execute in REVERSE order of addition.
+# Add CORS LAST so it executes FIRST.
+# ============================================================
+
+# 1. Security Headers (executes third)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. Rate Limiting (executes second)
+app.add_middleware(RateLimitMiddleware)
+
+# 3. CORS - MUST BE ADDED LAST (executes first)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
-# Security Headers Middleware
-app.add_middleware(SecurityHeadersMiddleware)
-
-# Rate Limiting Middleware
-app.add_middleware(RateLimitMiddleware)
-
-# Trusted Host Middleware
-if settings.ENVIRONMENT == "production":
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=settings.ALLOWED_HOSTS,
-    )
 
 
 @app.middleware("http")
