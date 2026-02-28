@@ -1,4 +1,3 @@
-// ResetPasswordPage.jsx
 import { useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -28,7 +27,7 @@ export default function ResetPasswordPage() {
     }
 
     setIsSubmitting(true);
-    setPasswordErrors([]); // Clear previous errors
+    setPasswordErrors([]);
     
     try {
       await authAPI.resetPassword(token, data.password);
@@ -38,18 +37,13 @@ export default function ResetPasswordPage() {
     } catch (error) {
       const errorData = error.response?.data;
       
-      // Check if it's a password validation error
       if (errorData?.detail?.password_errors) {
-        // Show password requirement errors but stay on form
         setPasswordErrors(errorData.detail.password_errors);
         toast.error('Password does not meet requirements');
-        // Don't change status - keep showing the form
       } else if (errorData?.detail === 'Invalid or expired reset token') {
-        // Token is invalid/expired - show error page
         setStatus('error');
         toast.error('Reset link has expired');
       } else {
-        // Other errors - show toast but stay on form
         toast.error(typeof errorData?.detail === 'string' ? errorData.detail : 'Failed to reset password');
       }
     }
@@ -59,9 +53,9 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
-        <div className="bg-dark-900 rounded-2xl shadow-lg border border-dark-900 p-8 text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-8 h-8 text-red-600" />
+        <div className="bg-dark-800 rounded-2xl shadow-lg border border-dark-700 p-8 text-center max-w-md">
+          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-500" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Invalid Link</h1>
           <p className="text-dark-300 mb-6">This password reset link is invalid or has expired.</p>
@@ -80,39 +74,39 @@ export default function ResetPasswordPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="bg-dark rounded-2xl shadow-lg">
+        <div className="bg-dark-800 rounded-2xl shadow-lg border border-dark-700 p-8">
           {status === 'form' && (
             <>
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-8 h-8 text-primary-600" />
+                <div className="w-16 h-16 rounded-full bg-primary-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-8 h-8 text-primary-500" />
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-2">Reset Password</h1>
-                <p className="text-dark-400">Enter your new password below</p>
+                <p className="text-dark-300">Enter your new password below</p>
               </div>
 
               {/* Password Requirements Info */}
-              <div className="mb-6 p-4 bg-dark-900">
-                <p className="text-sm font-medium text-dark-300 mb-2">Password must contain:</p>
-                <ul className="text-sm text-dark-400 space-y-1">
+              <div className="mb-6 p-4 bg-dark-700/50 rounded-xl border border-dark-600">
+                <p className="text-sm font-medium text-dark-200 mb-2">Password must contain:</p>
+                <ul className="text-sm text-dark-300 space-y-1">
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 bg-dark-400 rounded-full"></span>
                     At least 8 characters
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 bg-dark-400 rounded-full"></span>
                     One uppercase letter
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 bg-dark-400 rounded-full"></span>
                     One lowercase letter
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 bg-dark-400 rounded-full"></span>
                     One number
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                    <span className="w-1.5 h-1.5 bg-dark-400 rounded-full"></span>
                     One special character (!@#$%^&*)
                   </li>
                 </ul>
@@ -120,12 +114,12 @@ export default function ResetPasswordPage() {
 
               {/* Password Validation Errors from Backend */}
               {passwordErrors.length > 0 && (
-                <div className="mb-4 p-4 bg-dark-900 border border-red-200 rounded-xl">
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-red-800 mb-1">Password requirements not met:</p>
-                      <ul className="text-sm text-red-600 space-y-1">
+                      <p className="text-sm font-medium text-red-400 mb-1">Password requirements not met:</p>
+                      <ul className="text-sm text-red-300 space-y-1">
                         {passwordErrors.map((err, index) => (
                           <li key={index}>• {err}</li>
                         ))}
@@ -137,7 +131,7 @@ export default function ResetPasswordPage() {
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">New Password</label>
+                  <label className="block text-sm font-medium text-dark-200 mb-2">New Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -151,16 +145,16 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
+                  {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">Confirm Password</label>
+                  <label className="block text-sm font-medium text-dark-200 mb-2">Confirm Password</label>
                   <div className="relative">
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
@@ -174,12 +168,12 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white transition-colors"
                     >
                       {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
+                  {errors.confirmPassword && <p className="text-red-400 text-sm mt-1">{errors.confirmPassword.message}</p>}
                 </div>
 
                 <button
@@ -199,12 +193,12 @@ export default function ResetPasswordPage() {
 
           {status === 'success' && (
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
               <h1 className="text-2xl font-bold text-white mb-2">Password Reset!</h1>
               <p className="text-dark-300 mb-6">Your password has been successfully reset.</p>
-              <p className="text-sm text-dark-300 mb-4">Redirecting to login...</p>
+              <p className="text-sm text-dark-400 mb-4">Redirecting to login...</p>
               <Link to="/login" className="btn-gradient inline-block">
                 Go to Login
               </Link>
@@ -213,8 +207,8 @@ export default function ResetPasswordPage() {
 
           {status === 'error' && (
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <XCircle className="w-8 h-8 text-red-600" />
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <XCircle className="w-8 h-8 text-red-500" />
               </div>
               <h1 className="text-2xl font-bold text-white mb-2">Reset Failed</h1>
               <p className="text-dark-300 mb-6">The reset link may be invalid or expired.</p>

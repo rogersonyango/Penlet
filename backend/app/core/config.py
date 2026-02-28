@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     REQUIRE_UPPERCASE: bool = True
     REQUIRE_LOWERCASE: bool = True
     REQUIRE_DIGIT: bool = True
-    REQUIRE_SPECIAL: bool = False  # Set to False for easier password creation
+    REQUIRE_SPECIAL: bool = False
     
     # Account Security
     MAX_LOGIN_ATTEMPTS: int = 5
@@ -84,13 +84,24 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     
     # Email Configuration
+    EMAIL_PROVIDER: str = "smtp"  # "sendgrid", "resend", or "smtp"
+    
+    # SendGrid Configuration (recommended for production)
+    SENDGRID_API_KEY: Optional[str] = None
+    
+    # Resend Configuration (alternative)
+    RESEND_API_KEY: Optional[str] = None
+    
+    # SMTP Configuration (fallback)
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
-    FROM_EMAIL: Optional[str] = None
-    FROM_NAME: str = "Penlet"
     SMTP_USE_TLS: bool = True
+    
+    # Email Settings (used by all providers)
+    FROM_EMAIL: str = "noreply@example.com"
+    FROM_NAME: str = "Penlet"
     FRONTEND_URL: str = "http://localhost:5173"
     
     # Logging
@@ -102,9 +113,9 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = "backups"
     BACKUP_RETENTION_DAYS: int = 30
     
-    # AI Chatbot (OpenAI or similar)
+    # AI Chatbot
     ANTHROPIC_API_KEY: Optional[str] = None
-    ANTHROPIC_MODEL: str = "anthropic sonnet 4.5"
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
     
     class Config:
         env_file = ".env"

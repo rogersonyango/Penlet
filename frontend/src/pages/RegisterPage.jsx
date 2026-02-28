@@ -60,7 +60,7 @@ export default function RegisterPage() {
     const result = await registerUser(userData);
     
     if (result.success) {
-      toast.success('Account created successfully! Please sign in.');
+      toast.success('Account created! Please check your email to verify your account.');
       navigate('/login');
     } else {
       toast.error(result.error);
@@ -72,14 +72,14 @@ export default function RegisterPage() {
       <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
         Create Account
       </h2>
-      <p className="text-dark-400 mb-8">
+      <p className="text-dark-300 mb-8">
         Join Penlet and start your learning journey
       </p>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="form-group">
-            <label className="form-label">First Name</label>
+            <label className="form-label text-dark-200">First Name</label>
             <input
               type="text"
               {...register('first_name')}
@@ -87,12 +87,12 @@ export default function RegisterPage() {
               placeholder="John"
             />
             {errors.first_name && (
-              <p className="form-error">{errors.first_name.message}</p>
+              <p className="form-error text-red-400">{errors.first_name.message}</p>
             )}
           </div>
           
           <div className="form-group">
-            <label className="form-label">Last Name</label>
+            <label className="form-label text-dark-200">Last Name</label>
             <input
               type="text"
               {...register('last_name')}
@@ -100,13 +100,13 @@ export default function RegisterPage() {
               placeholder="Doe"
             />
             {errors.last_name && (
-              <p className="form-error">{errors.last_name.message}</p>
+              <p className="form-error text-red-400">{errors.last_name.message}</p>
             )}
           </div>
         </div>
         
         <div className="form-group">
-          <label className="form-label">Username</label>
+          <label className="form-label text-dark-200">Username</label>
           <input
             type="text"
             {...register('username')}
@@ -114,12 +114,12 @@ export default function RegisterPage() {
             placeholder="johndoe"
           />
           {errors.username && (
-            <p className="form-error">{errors.username.message}</p>
+            <p className="form-error text-red-400">{errors.username.message}</p>
           )}
         </div>
         
         <div className="form-group">
-          <label className="form-label">Email Address</label>
+          <label className="form-label text-dark-200">Email Address</label>
           <input
             type="email"
             {...register('email')}
@@ -127,12 +127,12 @@ export default function RegisterPage() {
             placeholder="john@example.com"
           />
           {errors.email && (
-            <p className="form-error">{errors.email.message}</p>
+            <p className="form-error text-red-400">{errors.email.message}</p>
           )}
         </div>
         
         <div className="form-group">
-          <label className="form-label">Class Level</label>
+          <label className="form-label text-dark-200">Class Level</label>
           <select {...register('student_class')} className="input-field">
             <option value="">Select your class</option>
             {CLASS_LEVELS.map((level) => (
@@ -142,12 +142,12 @@ export default function RegisterPage() {
             ))}
           </select>
           {errors.student_class && (
-            <p className="form-error">{errors.student_class.message}</p>
+            <p className="form-error text-red-400">{errors.student_class.message}</p>
           )}
         </div>
         
         <div className="form-group">
-          <label className="form-label">Password</label>
+          <label className="form-label text-dark-200">Password</label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -164,12 +164,12 @@ export default function RegisterPage() {
             </button>
           </div>
           {errors.password && (
-            <p className="form-error">{errors.password.message}</p>
+            <p className="form-error text-red-400">{errors.password.message}</p>
           )}
         </div>
         
         <div className="form-group">
-          <label className="form-label">Confirm Password</label>
+          <label className="form-label text-dark-200">Confirm Password</label>
           <input
             type="password"
             {...register('confirm_password')}
@@ -177,13 +177,13 @@ export default function RegisterPage() {
             placeholder="Confirm your password"
           />
           {errors.confirm_password && (
-            <p className="form-error">{errors.confirm_password.message}</p>
+            <p className="form-error text-red-400">{errors.confirm_password.message}</p>
           )}
         </div>
         
         <div className="flex items-start gap-2">
           <input type="checkbox" className="checkbox mt-1" required />
-          <span className="text-sm text-dark-400">
+          <span className="text-sm text-dark-300">
             I agree to the{' '}
             <a href="#" className="text-primary-400 hover:text-primary-300">
               Terms of Service
@@ -212,7 +212,7 @@ export default function RegisterPage() {
       </form>
       
       <div className="mt-6 text-center">
-        <p className="text-dark-400">
+        <p className="text-dark-300">
           Already have an account?{' '}
           <Link to="/login" className="text-primary-400 hover:text-primary-300 font-medium">
             Sign in
@@ -220,7 +220,7 @@ export default function RegisterPage() {
         </p>
       </div>
       
-      <p className="mt-6 text-xs text-dark-500 text-center">
+      <p className="mt-6 text-xs text-dark-400 text-center">
         Note: Teachers cannot self-register. Please contact your administrator.
       </p>
     </div>
