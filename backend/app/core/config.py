@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     
     # AI Chatbot
     ANTHROPIC_API_KEY: Optional[str] = None
-    ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+    ANTHROPIC_MODEL: str = "claude-sonnet-5"
     
     class Config:
         env_file = ".env"
