@@ -105,7 +105,7 @@ async def chat(
         
         # Call Claude API
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=settings.ANTHROPIC_MODEL,
             max_tokens=1024,
             system=system_prompt,
             messages=messages
@@ -174,7 +174,7 @@ async def chat_stream(
             messages.append({"role": "user", "content": request.message})
             
             with client.messages.stream(
-                model="claude-sonnet-4-20250514",
+                model=settings.ANTHROPIC_MODEL,
                 max_tokens=1024,
                 system=system_prompt,
                 messages=messages
