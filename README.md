@@ -2,7 +2,7 @@
 
 A comprehensive role-based Progressive Web Application (PWA) for educational management, designed specifically for Uganda's education system (Senior 1-6).
 
-## 🌟 Features
+## Features
 
 ### For Students
 - **Subjects**: View enrolled subjects with content access
@@ -42,7 +42,7 @@ A comprehensive role-based Progressive Web Application (PWA) for educational man
 - **State Management**: Zustand + React Query
 - **PWA**: Vite PWA plugin with offline support
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 penlet/
@@ -72,7 +72,7 @@ penlet/
 └── docs/                        # Documentation
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.11+
@@ -136,7 +136,7 @@ DEBUG=true
 BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
-## 🔒 Security Features
+## Security Features
 
 - **JWT Authentication** with access and refresh tokens
 - **Role-Based Access Control** (RBAC)
@@ -148,14 +148,14 @@ BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 - **XSS Protection** with content security headers
 - **CSRF Protection** for form submissions
 
-## 📱 PWA Features
+## PWA Features
 
 - **Offline Support** with service worker caching
 - **Installable** on desktop and mobile
 - **Push Notifications** (configurable)
 - **Responsive Design** for all screen sizes
 
-## 🧪 Testing
+## Testing
 
 ### Backend
 ```bash
@@ -169,7 +169,7 @@ cd frontend
 npm run test
 ```
 
-## 📦 Deployment
+## Deployment
 
 ### Docker
 
@@ -187,12 +187,12 @@ docker-compose up -d
 5. Build frontend: `npm run build`
 6. Serve frontend with nginx
 
-## 📄 API Documentation
+## API Documentation
 
 - Swagger UI: `http://localhost:8000/api/v1/docs`
 - ReDoc: `http://localhost:8000/api/v1/redoc`
 
-## 🎨 Design System
+## Design System
 
 ### Colors
 - **Primary**: Purple gradient (#7c3aed to #9333ea)
@@ -205,7 +205,7 @@ docker-compose up -d
 - **Body**: Inter
 - **Monospace**: JetBrains Mono
 
-## 📈 Roadmap
+## Roadmap
 
 - [ ] Email verification
 - [ ] Real-time notifications with WebSockets
@@ -214,7 +214,7 @@ docker-compose up -d
 - [ ] Mobile app (React Native)
 - [ ] Multi-language support
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
