@@ -205,15 +205,6 @@ docker-compose up -d
 - **Body**: Inter
 - **Monospace**: JetBrains Mono
 
-## Roadmap
-
-- [ ] Email verification
-- [ ] Real-time notifications with WebSockets
-- [ ] Video streaming optimization
-- [ ] Advanced analytics dashboard
-- [ ] Mobile app (React Native)
-- [ ] Multi-language support
-
 ## Contributing
 
 1. Fork the repository
